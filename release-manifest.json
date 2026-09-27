@@ -6,8 +6,8 @@
     "name": "F50-Mihomo-UFI-Device-Manager-Beta2.6-RC2.2-arm64.tar",
     "root_dir": "F50-Mihomo-UFI-Device-Manager-Beta2.6-RC2.2",
     "url": "https://github.com/Kiro-Durandal/MihomoForUFI/releases/download/v2.6-rc2.2/F50-Mihomo-UFI-Device-Manager-Beta2.6-RC2.2-arm64.tar",
-    "sha256": "d34db315b12fb030474cde1c18c0e1a055aa46ec0ea59a69b7e61033e293caf6",
-    "bytes": 64097792
+    "sha256": "efbcb660eeda8081e6b0a536f63191204122ddd23aa166b3384241351cdacb41",
+    "bytes": 64102400
   },
   "third_party_source": {
     "component": "MetaCubeX/mihomo",
