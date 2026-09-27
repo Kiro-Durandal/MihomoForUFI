@@ -1,15 +1,17 @@
 #!/system/bin/sh
 
-# Unified installer for F50 Mihomo Beta 2.6-RC2.
-# - Fresh install: stages a complete tree, validates it, commits atomically,
-#   starts Mihomo, verifies dual-stack TProxy, then enables boot startup.
+# Unified installer for F50 Mihomo Beta 2.6-RC2.2.
+# - Fresh install without a subscription: commits the backend and template in
+#   a pending state. Applying a valid configuration starts Mihomo later.
+# - Fresh install with a complete configuration: validates, commits, starts,
+#   verifies dual-stack TProxy, then enables boot startup.
 # - Existing install: delegates to the transactional RC2 upgrade path and
 #   preserves config.yaml, providers, logs, UI and the Mihomo binary.
 
 set -u
 
 D=$(CDPATH= cd -- "$(dirname "$0")" 2>/dev/null && pwd) || exit 1
-VERSION=2.6-RC2
+VERSION=2.6-RC2.2
 BASE=/data/f50-mihomo
 BIN=$BASE/bin/mihomo
 CFG=$BASE/config/config.yaml
@@ -24,6 +26,7 @@ START_AFTER=1
 ENABLE_BOOT=1
 STAGE=''
 INSTALL_LOCK=/data/local/tmp/f50-mihomo-rc2-install.lock
+PENDING_MARKER=run/setup-pending
 
 say() { printf '%s\n' "$*"; }
 die() { say "ERROR: $*" >&2; exit 1; }
@@ -34,13 +37,15 @@ Usage:
   sh install.sh [--fresh|--upgrade] [options]
 
 Fresh-install options:
-  --subscription-file PATH  File whose first line is the HTTPS subscription URL
+  --subscription-file PATH  Optional file whose first line is the HTTPS subscription URL
   --config PATH             Use a complete config.yaml instead of the template
-  --no-start                Install and validate, but do not start immediately
+  --no-start                With a complete config, validate but do not start
   --no-boot                 Do not add the UFI-Tools boot-start entry
 
 Existing installations automatically use the transactional upgrade path and
 preserve the current configuration and runtime data.
+Without --subscription-file or --config, the backend is installed without
+starting Mihomo. Complete setup from the front-end subscription dialog.
 EOF
 }
 
@@ -116,6 +121,11 @@ if [ "$MODE" = upgrade ]; then
   is_complete_install || die '未检测到可升级的完整安装；请使用全新安装'
   [ -f "$D/install-upgrade.sh" ] || die '发布包缺少 install-upgrade.sh'
   say "检测到现有安装，进入 $VERSION 事务式升级。"
+  if [ -f "$BASE/$PENDING_MARKER" ]; then
+    sh "$D/install-upgrade.sh" --pending || exit $?
+    say '待配置后端已升级；请在前端填写订阅链接，现有配置仍未修改。'
+    exit 0
+  fi
   if [ "$START_AFTER" -eq 1 ]; then
     sh "$D/install-upgrade.sh"
   else
@@ -157,8 +167,9 @@ if [ -n "$CONFIG_SOURCE" ]; then
   [ -f "$CONFIG_SOURCE" ] || die "配置文件不存在：$CONFIG_SOURCE"
   [ "$(wc -c < "$CONFIG_SOURCE" 2>/dev/null || echo 99999999)" -le 3145728 ] 2>/dev/null || die '配置文件超过 3 MB'
 else
-  [ -n "$SUBSCRIPTION_FILE" ] || die '全新安装需要 --subscription-file，或通过 --config 提供完整配置'
-  [ -f "$SUBSCRIPTION_FILE" ] || die "订阅文件不存在：$SUBSCRIPTION_FILE"
+  if [ -n "$SUBSCRIPTION_FILE" ]; then
+    [ -f "$SUBSCRIPTION_FILE" ] || die "订阅文件不存在：$SUBSCRIPTION_FILE"
+  fi
   grep -q '__REVIEW_REQUIRED__' "$D/config/config.template.yaml" 2>/dev/null && \
     die 'config.template.yaml 尚未完成 DNS/规则/隐私复核；请移除 __REVIEW_REQUIRED__ 标记后再发布'
 fi
@@ -180,11 +191,14 @@ render_template() {
   URL_ESCAPED=$(printf '%s' "$URL" | sed "s/'/''/g")
 
   awk -v url="$URL_ESCAPED" '
+    { sub(/\r$/, "") }
     $0 == "    url: __SUBSCRIPTION_URL__" {
       print "    url: \047" url "\047"
+      replaced++
       next
     }
     { print }
+    END { if (replaced != 1) exit 1 }
   ' "$TEMPLATE" > "$TARGET" || die '生成配置失败'
 
   if grep -Eq '__[A-Z0-9_]+__' "$TARGET" 2>/dev/null; then
@@ -210,8 +224,14 @@ chmod 700 "$STAGE/scripts/ufi-backend.sh" || die '设置 ufi-backend.sh 权限�
 
 if [ -n "$CONFIG_SOURCE" ]; then
   cp "$CONFIG_SOURCE" "$STAGE/config/config.yaml" || die '复制配置失败'
-else
+  CONFIG_READY=1
+elif [ -n "$SUBSCRIPTION_FILE" ]; then
   render_template "$D/config/config.template.yaml" "$STAGE/config/config.yaml"
+  CONFIG_READY=1
+else
+  cp "$D/config/config.template.yaml" "$STAGE/config/config.yaml" || die '复制待配置模板失败'
+  touch "$STAGE/$PENDING_MARKER" || die '创建待配置标记失败'
+  CONFIG_READY=0
 fi
 chmod 600 "$STAGE/config/config.yaml" 2>/dev/null || true
 
@@ -226,10 +246,18 @@ if [ -d "$D/runtime/providers" ]; then
   cp -R "$D/runtime/providers/." "$STAGE/providers/" || die '复制初始 provider 缓存失败'
 fi
 
-"$STAGE/bin/mihomo" -t -d "$STAGE" -f "$STAGE/config/config.yaml" || die '配置校验失败；未修改正式安装目录'
+if [ "$CONFIG_READY" -eq 1 ]; then
+  "$STAGE/bin/mihomo" -t -d "$STAGE" -f "$STAGE/config/config.yaml" || die '配置校验失败；未修改正式安装目录'
+fi
 
 mv "$STAGE" "$BASE" || die '无法提交正式安装目录'
 STAGE=''
+
+if [ "$CONFIG_READY" -eq 0 ]; then
+  say "OK: F50 Mihomo $VERSION 后端已安装，等待填写订阅链接。"
+  say 'INFO: Mihomo 尚未启动，TProxy 和开机自启尚未启用。'
+  exit 0
+fi
 
 if [ "$START_AFTER" -eq 1 ]; then
   if ! OUTPUT=$(sh "$BASE/scripts/ufi-backend.sh" start 2>&1); then

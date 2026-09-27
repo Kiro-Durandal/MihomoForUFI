@@ -1,6 +1,6 @@
 #!/system/bin/sh
 
-# Transactional F50 Mihomo 2.6-RC2 dual-stack upgrade.
+# Transactional F50 Mihomo 2.6-RC2.2 dual-stack upgrade.
 # Default: install, restart, verify, and automatically roll back on failure.
 # Use --stage-only to install without restarting the currently running service.
 
@@ -96,6 +96,12 @@ read_config_value() {
 [ -d "$SCRIPTS" ] || die "未找到 $SCRIPTS"
 [ -x "$BIN" ] || die "未找到可执行 Mihomo：$BIN"
 [ -f "$CFG" ] || die "未找到配置：$CFG"
+PENDING_UPGRADE=0
+if [ "${1:-}" = '--pending' ]; then
+  [ -f "$BASE/run/setup-pending" ] || die '待配置升级模式缺少 setup-pending 标记'
+  grep -q '    url: __SUBSCRIPTION_URL__' "$CFG" || die '待配置标记与订阅占位符不一致，拒绝升级'
+  PENDING_UPGRADE=1
+fi
 
 mkdir -p "$BASE/run" "$BASE/backups" || die '无法创建升级工作目录'
 acquire_lock
@@ -131,7 +137,11 @@ case "$FAKE_IP6_RANGE" in
   *) die '配置缺少有效的 dns.fake-ip-range6' ;;
 esac
 
-"$BIN" -t -d "$BASE" -f "$CFG" || die '当前 Mihomo 配置校验失败'
+if [ "$PENDING_UPGRADE" -eq 0 ]; then
+  "$BIN" -t -d "$BASE" -f "$CFG" || die '当前 Mihomo 配置校验失败'
+else
+  say 'INFO: 待配置后端保留订阅占位符；跳过尚无法执行的 Mihomo 配置校验。'
+fi
 
 STAMP=$(date +%s 2>/dev/null || echo 0)$$
 BACKUP_DIR=$BASE/backups/upgrade-v26-$STAMP
@@ -160,10 +170,15 @@ for NAME in $FILES; do
 done
 
 BACKUP_READY=0
-say 'Beta 2.6-RC2 脚本已原子安装；现有 config.yaml 未作任何修改。'
+say 'Beta 2.6-RC2.2 脚本已原子安装；现有 config.yaml 未作任何修改。'
+
+if [ "$PENDING_UPGRADE" -eq 1 ]; then
+  say '待配置后端升级完成；保持 Mihomo 停止，不设置开机自启。'
+  exit 0
+fi
 
 if [ "${1:-}" = '--stage-only' ]; then
-  say '已按 stage-only 模式保留当前进程。下次重启 Mihomo 时启用 RC2 脚本。'
+  say '已按 stage-only 模式保留当前进程。下次重启 Mihomo 时启用 RC2.2 脚本。'
   exit 0
 fi
 
@@ -183,7 +198,7 @@ restore_files || die "恢复旧脚本失败；请从 $BACKUP_DIR 手动恢复"
 BACKUP_READY=0
 
 if sh "$SCRIPTS/start.sh"; then
-  say '已自动恢复升级前脚本与运行状态。2.6-RC2 未生效。' >&2
+  say '已自动恢复升级前脚本与运行状态。2.6-RC2.2 未生效。' >&2
 else
   say "ERROR: 旧版脚本已恢复，但重新启动失败。备份位于 $BACKUP_DIR" >&2
 fi

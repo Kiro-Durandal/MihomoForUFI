@@ -1,5 +1,6 @@
-# F50 Mihomo Beta 2.6-RC2 公共安装模板
-# 安装器只替换主订阅占位符；请勿把安装后生成的 config.yaml 上传到公开仓库。
+# F50 Mihomo Beta 2.6-RC2.2 公共安装模板
+# 后端可先安装，随后由设备管理窗口替换主订阅占位符并启用 Mihomo。
+# 请勿把安装后生成的 config.yaml 上传到公开仓库。
 # external-controller 对局域网开放，初始密钥按发布要求设为 123456；安装后建议尽快改成长随机值。
 
 # 基础运行参数：规则模式、双栈解析、允许局域网设备使用。
@@ -12,9 +13,9 @@ tcp-concurrent: true
 allow-lan: true
 bind-address: '*'
 
-# MetaCubeXD / REST API：监听全部接口，端口固定为 9090。
+# MetaCubeXD / REST API：监听全部接口，端口固定为 9099。
 # 123456 只是首次安装默认值，不应长期保留在不可信局域网。
-external-controller: 0.0.0.0:9090
+external-controller: 0.0.0.0:9099
 external-ui: /data/f50-mihomo/ui
 external-ui-url: "https://github.com/MetaCubeX/metacubexd/archive/refs/heads/gh-pages.zip"
 secret: '123456'
@@ -85,19 +86,19 @@ dns:
     'geosite:gfw':
       - 'https://cloudflare-dns.com/dns-query#HK - 自动选择'
       - 'https://dns10.quad9.net/dns-query#HK - 自动选择'
-  # 基础、代理节点、直连域名的解析器。
+  # 基础解析器用于引导 DoH 域名解析；代理节点和直连域名使用域名 DoH。
   default-nameserver:
   - 223.6.6.6
   - 119.29.29.29
   nameserver:
-  - https://223.5.5.5/dns-query
-  - https://1.12.12.12/dns-query
+  - https://dns.alidns.com/dns-query
+  - https://doh.pub/dns-query
   proxy-server-nameserver:
-  - https://223.5.5.5/dns-query
-  - https://1.12.12.12/dns-query
+  - https://dns.alidns.com/dns-query
+  - https://doh.pub/dns-query
   direct-nameserver:
-  - https://223.5.5.5/dns-query
-  - https://1.12.12.12/dns-query
+  - https://dns.alidns.com/dns-query
+  - https://doh.pub/dns-query
   direct-nameserver-follow-policy: false
   # 境外回退解析器及污染过滤条件。
   fallback:
@@ -115,7 +116,7 @@ dns:
   # fallback-lazy-query: true
 
 
-# 订阅提供器：安装时写入 URL；后续更新经“代理模式”当前选中项发起。
+# 订阅提供器：首次填写时写入 URL；后续更新经“代理模式”当前选中项发起。
 # 首次拉取尚无节点缓存时请让“代理模式”保持 DIRECT，以完成引导。
 proxy-providers:
   main:

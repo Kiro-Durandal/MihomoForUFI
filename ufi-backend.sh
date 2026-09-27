@@ -1,5 +1,5 @@
 #!/system/bin/sh
-# F50 Mihomo UFI-Tools backend 2.6-rc2
+# F50 Mihomo UFI-Tools backend 2.6-rc2.2
 # Fixed-action backend: no eval, no arbitrary shell execution.
 
 set -u
@@ -20,6 +20,7 @@ CURL=/data/data/com.minikano.f50_sms/files/curl
 UPLOAD_ROOT=/data/data/com.minikano.f50_sms/files/uploads
 MIHOMO_LOG=$BASE/logs/mihomo.log
 MIHOMO_PREVIOUS_LOG=$BASE/logs/mihomo.log.previous
+PENDING_MARKER=$RUN_DIR/setup-pending
 MANGLE_CHAIN4=F50_MIHOMO
 DNS_CHAIN4=F50_MIHOMO_DNS
 MANGLE_CHAIN6=F50_MIHOMO6
@@ -100,6 +101,10 @@ require_base() {
   [ -f "$CFG" ] || die "未找到配置：$CFG"
   [ -x "$SCRIPTS/start.sh" ] || die "未找到 start.sh"
   [ -x "$SCRIPTS/stop.sh" ] || die "未找到 stop.sh"
+}
+
+require_configured() {
+  [ ! -f "$PENDING_MARKER" ] || die '请先在设备管理窗口填写并应用订阅链接'
 }
 
 require_stop() {
@@ -206,9 +211,23 @@ health_quiet() {
   is_running && ports_ready && rules4_ready && rules6_ready
 }
 
+controller_reachable() {
+  [ -x "$CURL" ] || return 1
+  API_PORT=$(controller_port) || return 1
+  API_SECRET=$(awk '/^secret:/ {sub(/^secret:[[:space:]]*/, ""); print; exit}' "$CFG" 2>/dev/null | sed "s/^[ '\"]*//;s/[ '\"]*$//")
+  [ -n "$API_SECRET" ] || return 1
+  API_REPLY=$("$CURL" -fsS --connect-timeout 2 --max-time 5 \
+    -H "Authorization: Bearer $API_SECRET" \
+    "http://127.0.0.1:$API_PORT/version" 2>/dev/null) || return 1
+  printf '%s' "$API_REPLY" | grep -q '"version"'
+}
+
 status_action() {
   INSTALLED=0
   [ -x "$BIN" ] && [ -f "$CFG" ] && INSTALLED=1
+
+  CONFIGURED=0
+  [ "$INSTALLED" -eq 1 ] && [ ! -f "$PENDING_MARKER" ] && CONFIGURED=1
 
   RUNNING=0
   PID="$(pid_value)"
@@ -220,7 +239,7 @@ status_action() {
   UI=0
   [ -f "$BASE/ui/index.html" ] && UI=1
 
-  BACKEND_VERSION=2.6-rc2
+  BACKEND_VERSION=2.6-rc2.2
   VERSION=''
   if [ -x "$BIN" ]; then
     VERSION="$($BIN -v 2>/dev/null | head -n 1 || true)"
@@ -234,8 +253,8 @@ status_action() {
   BOOT_LOG_BYTES=$(file_size "$BOOT_LOG")
   CONTROLLER_PORT=$(controller_port 2>/dev/null || true)
 
-  printf 'installed=%s\nrunning=%s\npid=%s\nboot=%s\nui=%s\nipv4=%s\nipv6=%s\ncontroller_port=%s\nlog_bytes=%s\nboot_log_bytes=%s\nbackend=%s\nversion=%s\n' \
-    "$INSTALLED" "$RUNNING" "$PID" "$BOOT" "$UI" "$IPV4" "$IPV6" \
+  printf 'installed=%s\nconfigured=%s\nrunning=%s\npid=%s\nboot=%s\nui=%s\nipv4=%s\nipv6=%s\ncontroller_port=%s\nlog_bytes=%s\nboot_log_bytes=%s\nbackend=%s\nversion=%s\n' \
+    "$INSTALLED" "$CONFIGURED" "$RUNNING" "$PID" "$BOOT" "$UI" "$IPV4" "$IPV6" \
     "$CONTROLLER_PORT" "$LOG_BYTES" "$BOOT_LOG_BYTES" "$BACKEND_VERSION" "$VERSION"
 }
 
@@ -272,6 +291,7 @@ health_action() {
 start_action() {
   acquire_lock
   require_base
+  require_configured
   "$SCRIPTS/start.sh"
   sleep 2
   health_quiet || die "启动后健康检查未通过"
@@ -288,6 +308,7 @@ stop_action() {
 restart_action() {
   acquire_lock
   require_base
+  require_configured
   "$SCRIPTS/stop.sh"
   sleep 1
   "$SCRIPTS/start.sh"
@@ -298,6 +319,7 @@ restart_action() {
 
 boot_enable_action() {
   acquire_lock
+  require_configured
   touch "$BOOT_FILE" || die "无法访问开机脚本"
   if ! grep -Fq "$BOOT_MATCH" "$BOOT_FILE" 2>/dev/null; then
     printf '%s\n' "$BOOT_COMMAND" >> "$BOOT_FILE" || die "写入开机自启失败"
@@ -328,6 +350,8 @@ config_read_action() {
 config_apply_action() {
   acquire_lock
   require_base
+  WAS_PENDING=0
+  [ -f "$PENDING_MARKER" ] && WAS_PENDING=1
   SOURCE="${1:-}"
   check_upload_path "$SOURCE"
 
@@ -358,10 +382,25 @@ config_apply_action() {
   START_OK=0
   if "$SCRIPTS/start.sh"; then
     sleep 2
-    health_quiet && START_OK=1
+    if health_quiet; then
+      API_TRY=0
+      while [ "$API_TRY" -lt 3 ]; do
+        if controller_reachable; then START_OK=1; break; fi
+        API_TRY=$((API_TRY + 1))
+        sleep 1
+      done
+    fi
   fi
 
   if [ "$START_OK" -eq 1 ]; then
+    if [ "$WAS_PENDING" -eq 1 ]; then
+      rm -f "$PENDING_MARKER" || die '配置已生效，但无法清除待配置标记'
+      if touch "$BOOT_FILE" && { grep -Fq "$BOOT_MATCH" "$BOOT_FILE" 2>/dev/null || printf '%s\n' "$BOOT_COMMAND" >> "$BOOT_FILE"; }; then
+        say 'OK: 首次配置完成，已开启开机自启'
+      else
+        say 'WARN: 配置已生效，但开机自启设置失败；请稍后手动开启'
+      fi
+    fi
     say "OK: 配置已应用"
     say "backup=${SAFETY##*/}"
     exit 0
@@ -370,8 +409,8 @@ config_apply_action() {
   "$SCRIPTS/stop.sh" >/dev/null 2>&1 || true
   cp "$SAFETY" "$CFG" || die "新配置失败，且无法恢复安全备份"
   chmod 600 "$CFG" 2>/dev/null || true
-  "$SCRIPTS/start.sh" >/dev/null 2>&1 || true
-  die "新配置应用后健康检查失败，已尝试恢复操作前配置"
+  [ "$WAS_PENDING" -eq 1 ] || "$SCRIPTS/start.sh" >/dev/null 2>&1 || true
+  die "新配置应用后双栈或控制器健康检查失败，已尝试恢复操作前配置"
 }
 
 backup_create_action() {
@@ -476,7 +515,7 @@ diagnostic_action() {
 }
 
 api_info() {
-  SECRET="$(awk -F': *' '/^secret:/ {print $2; exit}' "$CFG" 2>/dev/null | sed "s/^[ '\"]*//;s/[ '\"]*$//")"
+  SECRET="$(awk '/^secret:/ {sub(/^secret:[[:space:]]*/, ""); print; exit}' "$CFG" 2>/dev/null | sed "s/^[ '\"]*//;s/[ '\"]*$//")"
   [ -n "$SECRET" ] || die "无法读取 Mihomo API 密码"
   CONTROLLER_PORT=$(controller_port) || die '无法从 external-controller 读取 TCP 端口'
   LAN_IP="$(ip -4 addr show dev br0 2>/dev/null | awk '/inet / {sub(/\/.*/,"",$2); print $2; exit}')"
@@ -490,6 +529,20 @@ api_version_action() {
   "$CURL" -fsS --connect-timeout 5 --max-time 12 \
     -H "Authorization: Bearer $SECRET" \
     "http://$LAN_IP:$CONTROLLER_PORT/version"
+}
+
+# Return Mihomo's provider JSON to the local front end. The front end only
+# displays the node count; it must never render addresses or credentials.
+provider_status_action() {
+  require_base
+  require_configured
+  is_running || die 'Mihomo 未运行，无法检查订阅加载状态'
+  [ -x "$CURL" ] || die '未找到 UFI-Tools curl'
+  api_info
+  "$CURL" -fsS --connect-timeout 5 --max-time 20 \
+    -H "Authorization: Bearer $SECRET" \
+    "http://127.0.0.1:$CONTROLLER_PORT/providers/proxies/main" || \
+    die '无法从 Mihomo 控制器读取 main 订阅状态'
 }
 
 ui_upgrade_action() {
@@ -541,6 +594,7 @@ case "$ACTION" in
   mihomo-log) mihomo_log_action ;;
   diagnostic) diagnostic_action ;;
   api-version) api_version_action ;;
+  provider-status) provider_status_action ;;
   ui-upgrade) ui_upgrade_action ;;
   uninstall) uninstall_action "${1:-}" ;;
   *) die "不支持的动作：$ACTION" ;;

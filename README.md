@@ -1,6 +1,6 @@
-# F50 Mihomo UFI-Tools Device Manager Beta 2.6-RC2
+# F50 Mihomo UFI-Tools Device Manager Beta 2.6-RC2.2
 
-RC2 以已在 F50 实机验证的 RC1 双栈脚本为基础，新增全新安装框架。目标不是为 IPv6 强制改选节点，而是稳定保留以下行为：
+RC2.2 延续 RC2.1 的先安装后填写订阅流程，并补足订阅加载反馈、控制器端口迁移和 UFI-Tools 一致的面板样式。双栈代理行为保持不变：
 
 - 国内 IPv4/IPv6 规则可 `DIRECT`。
 - 国外流量继续使用用户在“手动选择”中指定的同一个节点。
@@ -10,32 +10,31 @@ RC2 以已在 F50 实机验证的 RC1 双栈脚本为基础，新增全新安装
 
 ## 当前状态
 
-RC2 已作为公开 prerelease 发布：
+RC2.2 本地构建产物待实机全新安装验证；尚未发布到 GitHub：
 
-1. `config/config.template.yaml` 已保留审定的 DNS、规则集与策略组，只留下 `__SUBSCRIPTION_URL__` 供安装器本地替换。
-2. 全新安装模板的 MetaCubeXD 控制器使用 `0.0.0.0:9090`，初始密钥为 `123456`；该默认值是已知的，安装后应尽快修改。现有安装升级不会套用这两个值。
+1. `config/config.template.yaml` 保留规则集与策略组；首次安装时先保存带占位符的模板，填写订阅后再校验和启动。CLI `--subscription-file` 仍支持一步完成。
+2. 全新安装模板的 MetaCubeXD 控制器使用 `0.0.0.0:9099`，初始密钥为 `123456`；该默认值是已知的，安装后应尽快修改。现有安装升级不会套用这两个值。
 3. GitHub Actions 已下载并校验官方 Android arm64 Mihomo `v1.19.31`；来源、压缩前后 SHA-256、ELF 架构和 GPL-3.0 许可记录位于 `runtime/`。二进制保持 Git 忽略，只进入发布包。
-4. 公开仓库、不可变 tag、清单和五个 Release 资产均可匿名读取：<https://github.com/Kiro-Durandal/MihomoForUFI/releases/tag/v2.6-rc2>。
-5. tag 中的发布清单已写入真实 `.tar` 字节数、SHA-256 及 `published: true`；前端从不可变 tag 读取该清单。
+4. 本地构建器为后续不可变标签 `v2.6-rc2.2` 生成清单和 SHA-256；标签发布前请使用本地完整包安装。已发布的 RC2 不会被覆盖。
+5. 域名 DoH 改为 `dns.alidns.com` 和 `doh.pub`；`default-nameserver` 的 IP 引导解析保持不变。
 
-以上任一项未完成时，首次安装器会明确报错，不会留下半安装状态。
+未填写订阅时仅安装后端，不启动 Mihomo、不下发 TProxy 规则，也不开启开机自启。
 
 ## 用户流程
 
-1. 在 UFI-Tools 中启用高级功能并导入 RC2 JS。
+1. 在 UFI-Tools 中启用高级功能，移除旧版 F50 Mihomo JS 后导入 RC2.2 JS，避免两个版本同时加载。
 2. 点击“F50 Mihomo”。
 3. 后端缺失时自动打开首次安装向导。
-4. 输入自己的 HTTPS 订阅链接。
-5. 选择“从 GitHub 安装”，或同时选择本地 `release-manifest.json` 与完整 `.tar` 包。
-6. 前端上传文件，设备核对字节数和 SHA-256，执行包内 `install.sh`。
-7. 安装器校验配置和内核、原子提交目录、启动 Mihomo、建立 IPv4/IPv6 TProxy、进行健康检查并登记开机启动。
+4. 同时选择本地 `release-manifest.json` 与完整 `.tar` 包；RC2.2 发布后也可选择从 GitHub 安装，由 F50 直接下载发布包，避开浏览器的 Release 资产 CORS 限制。
+5. 前端上传文件，设备核对 SHA-256，执行包内 `install.sh`，提交待配置后端。
+6. 安装后弹出订阅窗口；填写自己的 HTTPS 链接。窗口持续显示校验、启动进度，并在完成后查询 Mihomo `main` 提供器的节点数。只有节点已加载且双栈规则完整才显示“就绪”；否则保留警告和重试入口。
 
 不会在页面加载时自动执行 Root 命令；安装必须由用户点击并确认。
 
 ## 文件结构
 
 ```text
-f50-mihomo-ufi-device-manager-beta2.6-rc2.js  UFI-Tools 前端与首次安装向导
+f50-mihomo-ufi-device-manager-beta2.6-rc2.2.js UFI-Tools 前端与首次安装向导
 LICENSE                                       原创项目文件的 MIT 许可证
 THIRD_PARTY_NOTICES.md                        第三方组件许可、来源与校验说明
 install.sh                                    全新安装/升级统一入口
@@ -58,29 +57,26 @@ scripts/status.sh                             状态检测
 scripts/boot-start.sh                         开机等待网络并启动
 scripts/uninstall.sh                          彻底卸载后端与运行数据
 tools/build-release.ps1                       发布包构建与基础泄露扫描
-.github/workflows/release-rc2.yml             手动触发、校验后创建 RC2 tag 与 Release
+tools/test-config-edit.js                     订阅 URL、旧端口迁移与节点计数回归测试
+.github/workflows/release-rc2.2.yml           手动触发、校验后创建 RC2.2 tag 与 Release
 RELEASE-CHECKLIST.md                          发布前人工检查项
 SECURITY.md                                   安全和漏洞报告说明
 ```
 
 ## 手动测试全新安装
 
-制作可安装包前至少需要：
-
-- 确认 `runtime/mihomo` 通过构建器固定的版本、架构与 SHA-256 校验；
-- 准备一个只在第一行保存个人 HTTPS 订阅链接的本地文本文件。
-
-然后在 F50 的 UFI-Tools TTYD Root 环境执行：
+制作可安装包前需要确认 `runtime/mihomo` 通过构建器固定的版本、架构与 SHA-256 校验。直接安装待配置后端：
 
 ```sh
-sh /sdcard/Download/F50-Mihomo-UFI-Device-Manager-Beta2.6-RC2/install.sh \
-  --subscription-file /sdcard/Download/my-subscription.txt
+sh /sdcard/Download/F50-Mihomo-UFI-Device-Manager-Beta2.6-RC2.2/install.sh
 ```
+
+随后在前端“更换订阅链接”中完成首次配置。也可在 CLI 安装时传入 `--subscription-file /sdcard/Download/my-subscription.txt`，继续一步完成。
 
 也可以提供一份完整配置，绕过模板生成：
 
 ```sh
-sh /sdcard/Download/F50-Mihomo-UFI-Device-Manager-Beta2.6-RC2/install.sh \
+sh /sdcard/Download/F50-Mihomo-UFI-Device-Manager-Beta2.6-RC2.2/install.sh \
   --config /sdcard/Download/config.yaml
 ```
 
@@ -88,19 +84,19 @@ sh /sdcard/Download/F50-Mihomo-UFI-Device-Manager-Beta2.6-RC2/install.sh \
 
 ## 现有安装升级
 
-统一入口会自动识别完整的 `/data/f50-mihomo`，只替换 RC2 脚本。现有 `config.yaml` 不重写、不迁移，也不做格式化；内核、provider、UI、日志和选择状态同样保留。前端与后端会从现有配置动态读取 `external-controller` 的 TCP 端口，因此 RC1 原端口可继续使用：
+统一入口会自动识别完整的 `/data/f50-mihomo`，只替换 RC2.2 脚本。现有 `config.yaml` 不重写、不迁移，也不做格式化；内核、provider、UI、日志和选择状态同样保留。前端与后端会从现有配置动态读取 `external-controller` 的 TCP 端口：
 
 ```sh
-sh /sdcard/Download/F50-Mihomo-UFI-Device-Manager-Beta2.6-RC2/install.sh
+sh /sdcard/Download/F50-Mihomo-UFI-Device-Manager-Beta2.6-RC2.2/install.sh
 ```
 
 也可以继续直接使用：
 
 ```sh
-sh /sdcard/Download/F50-Mihomo-UFI-Device-Manager-Beta2.6-RC2/install-upgrade.sh
+sh /sdcard/Download/F50-Mihomo-UFI-Device-Manager-Beta2.6-RC2.2/install-upgrade.sh
 ```
 
-注意：RC1 升级不会用 RC2 `config.template.yaml` 覆盖旧配置，连 `external-controller` 和 secret 也不会修改。升级器只会只读校验现有配置并在安装脚本后重启服务；DNS、规则、订阅、节点缓存及所有用户自定义项均原样继承。RC2 模板中的 `0.0.0.0:9090` 与 `123456` 仅用于全新安装。想采用新模板时，必须由用户另行上传并应用，或彻底卸载后全新安装。
+注意：RC1/RC2/RC2.1 升级不会用 RC2.2 `config.template.yaml` 覆盖旧配置，连 DNS、`external-controller` 和 secret 也不会修改。模板中的 `0.0.0.0:9099` 与 `123456` 仅用于全新安装。若 RC2.1 仍处于待填订阅状态，升级只替换脚本并保持服务停止；随后首次填写订阅时，前端会把旧模板默认的 `0.0.0.0:9090` 一并改为 9099。若现有配置已正常运行但仍使用 9090，可先点“检查控制器”，再明确点击“控制器改用 9099”；迁移会创建配置回滚点并重启 Mihomo。想采用新 DNS 时，需另行修改现有配置并上传应用。
 
 ## 彻底卸载
 
@@ -135,7 +131,7 @@ F50 内核没有 `ip6tables nat` 表，因此 IPv6 不复制 IPv4 DNS REDIRECT�
 
 ## 发布
 
-不要直接把整个上级工作区初始化为 Git 仓库。只发布本 RC2 目录，并先完成 `CONFIG-REVIEW.md` 与 `RELEASE-CHECKLIST.md`。
+不要直接把整个上级工作区初始化为 Git 仓库。只发布本 RC2.2 目录，并先完成 `CONFIG-REVIEW.md` 与 `RELEASE-CHECKLIST.md`。
 
 构建脚本会拒绝缺少内核、带待审定标记或含明显凭据模式的源目录：
 
@@ -143,15 +139,15 @@ F50 内核没有 `ip6tables nat` 表，因此 IPv6 不复制 IPv4 DNS REDIRECT�
 pwsh -File .\tools\build-release.ps1
 ```
 
-构建器已固定 `Kiro-Durandal/MihomoForUFI` 与 `v2.6-rc2`，会校验 Mihomo 二进制、许可证和对应源码归档，生成安装 `.tar`，并回写最终 `release-manifest.json` 与源码 `SHA256SUMS.txt`。也可显式传入相同的 `-Owner`、`-Repository` 和 `-Tag`；不同值会被拒绝，以免生成指向错误仓库的安装器。
+构建器已固定 `Kiro-Durandal/MihomoForUFI` 与 `v2.6-rc2.2`，会校验 Mihomo 二进制、许可证和对应源码归档，生成安装 `.tar`，并回写最终 `release-manifest.json` 与源码 `SHA256SUMS.txt`。
 
-仓库还提供手动触发的 `Publish RC2` GitHub Actions 工作流。它只接受固定的 `v2.6-rc2`，从上游 HTTPS 地址下载内核和源码并核对固定 SHA-256；随后执行同一构建器、提交最终清单、创建不可变 tag，并把五个发布资产上传为 prerelease。若 tag 已存在、主分支发生竞争更新、下载校验失败或产物内容异常，工作流会停止而不是覆盖发布。
+仓库还提供待发布的 `Publish RC2.2` GitHub Actions 工作流。发布前需先完成实机全新安装验证；工作流不会覆盖已有标签。
 
 发布产物应包括：
 
-- `f50-mihomo-ufi-device-manager-beta2.6-rc2.js`
+- `f50-mihomo-ufi-device-manager-beta2.6-rc2.2.js`
 - `release-manifest.json`
-- `F50-Mihomo-UFI-Device-Manager-Beta2.6-RC2-arm64.tar`
+- `F50-Mihomo-UFI-Device-Manager-Beta2.6-RC2.2-arm64.tar`
 - `mihomo-v1.19.31-source.tar.gz`
 - `SHA256SUMS.release.txt`
 
