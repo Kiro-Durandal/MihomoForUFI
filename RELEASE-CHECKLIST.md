@@ -47,10 +47,10 @@
 
 - [x] Add the user-selected MIT license for original project files and document that it does not relicense Mihomo.
 - [x] Pin `OWNER/REPOSITORY` to `Kiro-Durandal/MihomoForUFI` and the release tag to `v2.6-rc2`.
-- [ ] Confirm the repository, immutable `v2.6-rc2` tag and Release are anonymously readable; the repository API returned 404 on 2026-09-27.
-- [ ] Build the `.tar`, then generate its final byte size and SHA-256 manifest.
+- [x] Confirm the repository, immutable `v2.6-rc2` tag and Release are anonymously readable.
+- [x] Build the `.tar`, then generate its final byte size and SHA-256 manifest.
 - [x] Add a manually triggered release workflow that pins upstream downloads and refuses an existing RC2 tag.
-- [ ] Confirm the build script replaced `INSTALL_MANIFEST_URL` with the intended immutable raw manifest URL.
-- [ ] Re-run source and artifact credential scans.
-- [ ] Review `git diff` and the exact Git index before the first push.
-- [ ] Publish the JS, manifest, installer `.tar`, `mihomo-v1.19.31-source.tar.gz` and `SHA256SUMS.release.txt` as the same release version.
+- [x] Confirm the build script replaced `INSTALL_MANIFEST_URL` with the intended immutable raw manifest URL.
+- [x] Re-run source and artifact credential scans.
+- [x] Review the exact 30-file Git tree before the first push.
+- [x] Publish the JS, manifest, installer `.tar`, `mihomo-v1.19.31-source.tar.gz` and `SHA256SUMS.release.txt` as the same release version.

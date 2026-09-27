@@ -140,7 +140,7 @@ if ($jsText.Contains('__GITHUB_RAW_RELEASE_MANIFEST_URL__')) {
     throw 'The JS manifest URL is already set to a different repository or tag.'
 }
 
-$scanFiles = Get-ChildItem -LiteralPath $sourceRoot -Recurse -File |
+$scanFiles = Get-ChildItem -LiteralPath $sourceRoot -Recurse -Force -File |
     Where-Object {
         $_.FullName -notlike "$dist*" -and
         $_.FullName -notlike "$work*" -and
@@ -265,7 +265,7 @@ $releaseHashLines = Get-ChildItem -LiteralPath $dist -File |
 )
 
 $sourceChecksumPath = Join-Path $sourceRoot 'SHA256SUMS.txt'
-$sourceHashLines = Get-ChildItem -LiteralPath $sourceRoot -Recurse -File |
+$sourceHashLines = Get-ChildItem -LiteralPath $sourceRoot -Recurse -Force -File |
     Where-Object {
         $_.FullName -ne $sourceChecksumPath -and
         $_.FullName -ne $runtimePath -and

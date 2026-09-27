@@ -10,17 +10,17 @@ RC2 以已在 F50 实机验证的 RC1 双栈脚本为基础，新增全新安装
 
 ## 当前状态
 
-这是供审阅的 RC2 工作版本，配置模板已定稿，但整体尚未达到公开发布条件：
+RC2 已作为公开 prerelease 发布：
 
 1. `config/config.template.yaml` 已保留审定的 DNS、规则集与策略组，只留下 `__SUBSCRIPTION_URL__` 供安装器本地替换。
 2. 全新安装模板的 MetaCubeXD 控制器使用 `0.0.0.0:9090`，初始密钥为 `123456`；该默认值是已知的，安装后应尽快修改。现有安装升级不会套用这两个值。
-3. 本地发布工作区已注入并校验官方 Android arm64 Mihomo `v1.19.31`；来源、压缩前后 SHA-256、ELF 架构和 GPL-3.0 许可记录位于 `runtime/`。二进制保持 Git 忽略，只进入本地构建的发布包。
-4. GitHub 地址已固定为 `Kiro-Durandal/MihomoForUFI`；截至 2026-09-27，匿名 GitHub API 仍返回 404。要使用“从 GitHub 安装”，仓库、tag 和 Release 必须对匿名用户公开可读。
-5. 源码中的发布清单仍保持 `published: false` 与空包校验值，只有最终构建才会写入真实 `.tar` 字节数、SHA-256 及 `published: true`。
+3. GitHub Actions 已下载并校验官方 Android arm64 Mihomo `v1.19.31`；来源、压缩前后 SHA-256、ELF 架构和 GPL-3.0 许可记录位于 `runtime/`。二进制保持 Git 忽略，只进入发布包。
+4. 公开仓库、不可变 tag、清单和五个 Release 资产均可匿名读取：<https://github.com/Kiro-Durandal/MihomoForUFI/releases/tag/v2.6-rc2>。
+5. tag 中的发布清单已写入真实 `.tar` 字节数、SHA-256 及 `published: true`；前端从不可变 tag 读取该清单。
 
 以上任一项未完成时，首次安装器会明确报错，不会留下半安装状态。
 
-## 用户流程（发布后）
+## 用户流程
 
 1. 在 UFI-Tools 中启用高级功能并导入 RC2 JS。
 2. 点击“F50 Mihomo”。
