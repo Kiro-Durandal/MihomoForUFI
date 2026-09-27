@@ -1,0 +1,552 @@
+# F50 Mihomo Beta 2.6-RC2 公共安装模板
+# 安装器只替换主订阅占位符；请勿把安装后生成的 config.yaml 上传到公开仓库。
+# external-controller 对局域网开放，初始密钥按发布要求设为 123456；安装后建议尽快改成长随机值。
+
+# 基础运行参数：规则模式、双栈解析、允许局域网设备使用。
+mode: rule
+log-level: info
+ipv6: true
+find-process-mode: 'off'
+unified-delay: true
+tcp-concurrent: true
+allow-lan: true
+bind-address: '*'
+
+# MetaCubeXD / REST API：监听全部接口，端口固定为 9090。
+# 123456 只是首次安装默认值，不应长期保留在不可信局域网。
+external-controller: 0.0.0.0:9090
+external-ui: /data/f50-mihomo/ui
+external-ui-url: "https://github.com/MetaCubeX/metacubexd/archive/refs/heads/gh-pages.zip"
+secret: '123456'
+external-controller-cors:
+  allow-origins:
+  - '*'
+  allow-private-network: true
+
+# 状态持久化：保存策略组选择与 Fake-IP 映射。
+profile:
+  store-selected: true
+  store-fake-ip: true
+
+# 监听器：7894 为 IPv4/IPv6 TProxy；7892 仅供设备本机显式代理。
+listeners:
+  - name: f50-tproxy
+    type: tproxy
+    listen: '::'
+    port: 7894
+    udp: true
+
+  - name: f50-local
+    type: mixed
+    listen: 127.0.0.1
+    port: 7892
+    udp: true
+
+# DNS：沿用参考配置的 Fake-IP 双栈方案及国内/境外解析策略。
+dns:
+  enable: true
+  listen: ':1053'
+  ipv6: true
+  cache-algorithm: arc
+  prefer-h3: false
+  respect-rules: false
+  # IPv4 与 IPv6 均使用 Fake-IP；对应地址池须与防火墙脚本保持一致。
+  enhanced-mode: fake-ip
+  fake-ip-range: 198.18.0.1/16
+  fake-ip-range6: fdfe:dcba:9876::1/64
+  fake-ip-filter-mode: blacklist
+  fake-ip-filter:
+  - '+.lan'
+  - '+.local'
+  - '+.localdomain'
+  - '+.msftncsi.com'
+  - '+.msftconnecttest.com'
+  - 'localhost.ptlogin2.qq.com'
+  - 'stun.*.*'
+  - 'stun.*.*.*'
+  - 'stun.*.*.*.*'
+  - '*.n.n.srv.nintendo.net'
+  - '+.stun.playstation.net'
+  - 'xbox.*.microsoft.com'
+  - '+.xboxlive.com'
+  - '+.battlenet.com.cn'
+  - '+.wotgame.cn'
+  - '+.wggames.cn'
+  - '+.wowsgame.cn'
+  - '+.wargaming.net'
+  # 指定域名解析策略：连通性检测走国内 DNS，GFW 域名经香港策略组解析。
+  nameserver-policy:
+    '+.msftncsi.com':
+      - 223.6.6.6
+      - 119.29.29.29
+    '+.msftconnecttest.com':
+      - 223.6.6.6
+      - 119.29.29.29
+    'geosite:gfw':
+      - 'https://cloudflare-dns.com/dns-query#HK - 自动选择'
+      - 'https://dns10.quad9.net/dns-query#HK - 自动选择'
+  # 基础、代理节点、直连域名的解析器。
+  default-nameserver:
+  - 223.6.6.6
+  - 119.29.29.29
+  nameserver:
+  - https://223.5.5.5/dns-query
+  - https://1.12.12.12/dns-query
+  proxy-server-nameserver:
+  - https://223.5.5.5/dns-query
+  - https://1.12.12.12/dns-query
+  direct-nameserver:
+  - https://223.5.5.5/dns-query
+  - https://1.12.12.12/dns-query
+  direct-nameserver-follow-policy: false
+  # 境外回退解析器及污染过滤条件。
+  fallback:
+  - 'https://cloudflare-dns.com/dns-query#HK - 自动选择'
+  - 'https://dns10.quad9.net/dns-query#HK - 自动选择'
+  fallback-filter:
+    geoip: true
+    geoip-code: CN
+    ipcidr:
+      - 240.0.0.0/4
+      - 0.0.0.0/32
+      - 127.0.0.0/8
+      - 100.64.0.0/10
+  # 设备性能吃紧时可启用；未命中规则的境外域名首次解析可能稍慢。
+  # fallback-lazy-query: true
+
+
+# 订阅提供器：安装时写入 URL；后续更新经“代理模式”当前选中项发起。
+# 首次拉取尚无节点缓存时请让“代理模式”保持 DIRECT，以完成引导。
+proxy-providers:
+  main:
+    type: http
+    url: __SUBSCRIPTION_URL__
+    path: ./providers/main.yaml
+    interval: 21600
+    proxy: 代理模式
+    size-limit: 10485760
+    header:
+      User-Agent:
+      - FlClash/v0.8.93 clash-verge Platform/android
+    health-check:
+      enable: true
+      url: https://www.gstatic.com/generate_204
+      interval: 600
+      timeout: 5000
+      lazy: true
+
+# 策略组：保留原“规则更新”组，不额外创建“订阅更新”组。
+proxy-groups:
+  # 规则集更新默认跟随“代理模式”，也可手动改为 DIRECT。
+- name: 规则更新
+  type: select
+  proxies:
+  - 代理模式
+  - DIRECT
+  # 总入口及节点选择。
+- name: 代理模式
+  type: select
+  proxies:
+  - DIRECT
+  - 自动选择
+  - 手动选择
+- name: 自动选择
+  type: select
+  proxies:
+  - HK - 自动选择
+  - TW - 自动选择
+  - SG - 自动选择
+  - JP - 自动选择
+  - US - 自动选择
+  - 其它 - 自动选择
+- name: 手动选择
+  type: select
+  use:
+  - main
+  # 应用与业务分流。
+- name: 电报消息
+  type: select
+  proxies:
+  - 代理模式
+  - DIRECT
+  - HK - 手动选择
+  - TW - 手动选择
+  - SG - 手动选择
+  - JP - 手动选择
+  - US - 手动选择
+  - 其他 - 手动选择
+- name: Ai平台
+  type: select
+  proxies:
+  - 代理模式
+  - DIRECT
+  - HK - 手动选择
+  - TW - 手动选择
+  - SG - 手动选择
+  - JP - 手动选择
+  - US - 手动选择
+  - 其他 - 手动选择
+- name: 微软服务
+  type: select
+  proxies:
+  - 代理模式
+  - DIRECT
+  - HK - 手动选择
+  - TW - 手动选择
+  - SG - 手动选择
+  - JP - 手动选择
+  - US - 手动选择
+  - 其他 - 手动选择
+- name: Google
+  type: select
+  proxies:
+  - 代理模式
+  - DIRECT
+  - HK - 手动选择
+  - TW - 手动选择
+  - SG - 手动选择
+  - JP - 手动选择
+  - US - 手动选择
+  - 其他 - 手动选择
+- name: 油管视频
+  type: select
+  proxies:
+  - 代理模式
+  - DIRECT
+  - HK - 手动选择
+  - TW - 手动选择
+  - SG - 手动选择
+  - JP - 手动选择
+  - US - 手动选择
+  - 其他 - 手动选择
+- name: Steam
+  type: select
+  proxies:
+  - 代理模式
+  - DIRECT
+  use:
+  - main
+- name: 哔哩哔哩
+  type: select
+  proxies:
+  - DIRECT
+  - HK - 自动选择
+  - TW - 自动选择
+  - 代理模式
+- name: 漏网之鱼
+  type: select
+  proxies:
+  - 代理模式
+  - DIRECT
+- name: 广告拦截
+  type: select
+  proxies:
+  - REJECT
+  - DIRECT
+  - 代理模式
+  # 隐藏的地区延迟测试组，供“自动选择”引用。
+- name: HK - 自动选择
+  type: url-test
+  use:
+  - main
+  filter: (?i)(香港|Hong ?Kong|(^|[^A-Za-z])HK([^A-Za-z]|$))
+  url: https://www.gstatic.com/generate_204
+  interval: 300
+  timeout: 5000
+  lazy: true
+  tolerance: 50
+  hidden: true
+- name: TW - 自动选择
+  type: url-test
+  use:
+  - main
+  filter: (?i)(台湾|台灣|Taiwan|(^|[^A-Za-z])TW([^A-Za-z]|$))
+  url: https://www.gstatic.com/generate_204
+  interval: 300
+  timeout: 5000
+  lazy: true
+  tolerance: 50
+  hidden: true
+- name: SG - 自动选择
+  type: url-test
+  use:
+  - main
+  filter: (?i)(新加坡|狮城|獅城|Singapore|(^|[^A-Za-z])SG([^A-Za-z]|$))
+  url: https://www.gstatic.com/generate_204
+  interval: 300
+  timeout: 5000
+  lazy: true
+  tolerance: 50
+  hidden: true
+- name: JP - 自动选择
+  type: url-test
+  use:
+  - main
+  filter: (?i)(日本|Japan|(^|[^A-Za-z])JP([^A-Za-z]|$))
+  url: https://www.gstatic.com/generate_204
+  interval: 300
+  timeout: 5000
+  lazy: true
+  tolerance: 50
+  hidden: true
+- name: US - 自动选择
+  type: url-test
+  use:
+  - main
+  filter: (?i)(美国|美國|United States|USA|(^|[^A-Za-z])US([^A-Za-z]|$)|加拿大|Canada|TELUS|洛杉矶|洛杉磯|纽约|紐約|科罗纳|科羅納|Verizon)
+  url: https://www.gstatic.com/generate_204
+  interval: 300
+  timeout: 5000
+  lazy: true
+  tolerance: 50
+  hidden: true
+- name: 其它 - 自动选择
+  type: url-test
+  use:
+  - main
+  exclude-filter: (?i)(香港|Hong ?Kong|(^|[^A-Za-z])HK([^A-Za-z]|$))|(?i)(台湾|台灣|Taiwan|(^|[^A-Za-z])TW([^A-Za-z]|$))|(?i)(新加坡|狮城|獅城|Singapore|(^|[^A-Za-z])SG([^A-Za-z]|$))|(?i)(日本|Japan|(^|[^A-Za-z])JP([^A-Za-z]|$))|(?i)(美国|美國|United States|USA|(^|[^A-Za-z])US([^A-Za-z]|$)|加拿大|Canada|TELUS|洛杉矶|洛杉磯|纽约|紐約|科罗纳|科羅納|Verizon)
+  url: https://www.gstatic.com/generate_204
+  interval: 300
+  timeout: 5000
+  lazy: true
+  tolerance: 50
+  hidden: true
+  # 地区手动选择组。
+- name: HK - 手动选择
+  type: select
+  use:
+  - main
+  filter: (?i)(香港|Hong ?Kong|(^|[^A-Za-z])HK([^A-Za-z]|$))
+- name: TW - 手动选择
+  type: select
+  use:
+  - main
+  filter: (?i)(台湾|台灣|Taiwan|(^|[^A-Za-z])TW([^A-Za-z]|$))
+- name: SG - 手动选择
+  type: select
+  use:
+  - main
+  filter: (?i)(新加坡|狮城|獅城|Singapore|(^|[^A-Za-z])SG([^A-Za-z]|$))
+- name: JP - 手动选择
+  type: select
+  use:
+  - main
+  filter: (?i)(日本|Japan|(^|[^A-Za-z])JP([^A-Za-z]|$))
+- name: US - 手动选择
+  type: select
+  use:
+  - main
+  filter: (?i)(美国|美國|United States|USA|(^|[^A-Za-z])US([^A-Za-z]|$)|加拿大|Canada|TELUS|洛杉矶|洛杉磯|纽约|紐約|科罗纳|科羅納|Verizon)
+# 其他地区手动组：收纳未命中上述五个地区过滤器的节点。
+- name: 其他 - 手动选择
+  type: select
+  use:
+  - main
+  exclude-filter: (?i)(香港|Hong ?Kong|(^|[^A-Za-z])HK([^A-Za-z]|$))|(?i)(台湾|台灣|Taiwan|(^|[^A-Za-z])TW([^A-Za-z]|$))|(?i)(新加坡|狮城|獅城|Singapore|(^|[^A-Za-z])SG([^A-Za-z]|$))|(?i)(日本|Japan|(^|[^A-Za-z])JP([^A-Za-z]|$))|(?i)(美国|美國|United States|USA|(^|[^A-Za-z])US([^A-Za-z]|$)|加拿大|Canada|TELUS|洛杉矶|洛杉磯|纽约|紐約|科罗纳|科羅納|Verizon)
+
+# 远程规则集：全部通过原“规则更新”组更新。
+rule-providers:
+  # 广告与拒绝规则。
+  reject:
+    type: http
+    behavior: domain
+    format: yaml
+    url: https://cdn.jsdelivr.net/gh/Loyalsoldier/clash-rules@release/reject.txt
+    path: ./rule-providers/reject.txt
+    interval: 86400
+    proxy: 规则更新
+  BanAD:
+    type: http
+    behavior: classical
+    format: yaml
+    url: https://raw.githubusercontent.com/ACL4SSR/ACL4SSR/master/Clash/Providers/BanAD.yaml
+    path: ./rule-providers/BanAD.yaml
+    interval: 86400
+    proxy: 规则更新
+  # 常用境外服务规则。
+  msServe:
+    type: http
+    behavior: classical
+    format: yaml
+    url: https://raw.githubusercontent.com/ACL4SSR/ACL4SSR/master/Clash/Providers/Ruleset/Microsoft.yaml
+    path: ./rule-providers/msServe.yaml
+    interval: 86400
+    proxy: 规则更新
+  google:
+    type: http
+    behavior: domain
+    format: yaml
+    url: https://cdn.jsdelivr.net/gh/Loyalsoldier/clash-rules@release/google.txt
+    path: ./rule-providers/google.txt
+    interval: 86400
+    proxy: 规则更新
+  Ai:
+    type: http
+    behavior: classical
+    format: yaml
+    url: https://raw.githubusercontent.com/ACL4SSR/ACL4SSR/master/Clash/Providers/Ruleset/AI.yaml
+    path: ./rule-providers/Ai.yaml
+    interval: 86400
+    proxy: 规则更新
+  youtube:
+    type: http
+    behavior: classical
+    format: yaml
+    url: https://raw.githubusercontent.com/ACL4SSR/ACL4SSR/master/Clash/Providers/Ruleset/YouTube.yaml
+    path: ./rule-providers/youtube.yaml
+    interval: 86400
+    proxy: 规则更新
+  bilibili:
+    type: http
+    behavior: classical
+    format: yaml
+    url: https://raw.githubusercontent.com/ACL4SSR/ACL4SSR/master/Clash/Providers/Ruleset/Bilibili.yaml
+    path: ./rule-providers/bilibili.yaml
+    interval: 86400
+    proxy: 规则更新
+  steamCN:
+    type: http
+    behavior: classical
+    format: yaml
+    url: https://raw.githubusercontent.com/ACL4SSR/ACL4SSR/master/Clash/Providers/Ruleset/SteamCN.yaml
+    path: ./rule-providers/steamCN.yaml
+    interval: 86400
+    proxy: 规则更新
+  steam:
+    type: http
+    behavior: classical
+    format: yaml
+    url: https://raw.githubusercontent.com/ACL4SSR/ACL4SSR/master/Clash/Providers/Ruleset/Steam.yaml
+    path: ./rule-providers/steam.yaml
+    interval: 86400
+    proxy: 规则更新
+  telegramcidr:
+    type: http
+    behavior: ipcidr
+    format: yaml
+    url: https://fastly.jsdelivr.net/gh/Loyalsoldier/clash-rules@release/telegramcidr.txt
+    path: ./rule-providers/telegramcidr.yaml
+    interval: 86400
+    proxy: 规则更新
+  # 中国大陆域名、IPv4、IPv6 与媒体规则。
+  ChinaCompanyIp:
+    type: http
+    behavior: ipcidr
+    format: yaml
+    url: https://raw.githubusercontent.com/ACL4SSR/ACL4SSR/master/Clash/Providers/ChinaCompanyIp.yaml
+    path: ./rule-providers/ChinaCompanyIp.yaml
+    interval: 86400
+    proxy: 规则更新
+  ChinaDomain:
+    type: http
+    behavior: classical
+    format: yaml
+    url: https://raw.githubusercontent.com/ACL4SSR/ACL4SSR/master/Clash/Providers/ChinaDomain.yaml
+    path: ./rule-providers/ChinaDomain.yaml
+    interval: 86400
+    proxy: 规则更新
+  ChinaIp:
+    type: http
+    behavior: ipcidr
+    format: yaml
+    url: https://raw.githubusercontent.com/ACL4SSR/ACL4SSR/master/Clash/Providers/ChinaIp.yaml
+    path: ./rule-providers/ChinaIp.yaml
+    interval: 86400
+    proxy: 规则更新
+  ChinaIpv6:
+    type: http
+    behavior: classical
+    format: yaml
+    url: https://raw.githubusercontent.com/ACL4SSR/ACL4SSR/master/Clash/Providers/ChinaIpV6.yaml
+    path: ./rule-providers/ChinaIpv6.yaml
+    interval: 86400
+    proxy: 规则更新
+  ChinaMedia:
+    type: http
+    behavior: classical
+    format: yaml
+    url: https://raw.githubusercontent.com/ACL4SSR/ACL4SSR/master/Clash/Providers/ChinaMedia.yaml
+    path: ./rule-providers/ChinaMedia.yaml
+    interval: 86400
+    proxy: 规则更新
+  # 通用直连与代理判定规则。
+  direct:
+    type: http
+    behavior: domain
+    format: yaml
+    url: https://cdn.jsdelivr.net/gh/Loyalsoldier/clash-rules@release/direct.txt
+    path: ./rule-providers/direct.txt
+    interval: 86400
+    proxy: 规则更新
+  private:
+    type: http
+    behavior: domain
+    format: yaml
+    url: https://cdn.jsdelivr.net/gh/Loyalsoldier/clash-rules@release/private.txt
+    path: ./rule-providers/private.txt
+    interval: 86400
+    proxy: 规则更新
+  gfw:
+    type: http
+    behavior: domain
+    format: yaml
+    url: https://cdn.jsdelivr.net/gh/Loyalsoldier/clash-rules@release/gfw.txt
+    path: ./rule-providers/gfw.txt
+    interval: 86400
+    proxy: 规则更新
+  greatfire:
+    type: http
+    behavior: domain
+    format: yaml
+    url: https://cdn.jsdelivr.net/gh/Loyalsoldier/clash-rules@release/greatfire.txt
+    path: ./rule-providers/greatfire.txt
+    interval: 86400
+    proxy: 规则更新
+  tld-not-cn:
+    type: http
+    behavior: domain
+    format: yaml
+    url: https://cdn.jsdelivr.net/gh/Loyalsoldier/clash-rules@release/tld-not-cn.txt
+    path: ./rule-providers/tld-not-cn.txt
+    interval: 86400
+    proxy: 规则更新
+  proxyGFW:
+    type: http
+    behavior: classical
+    format: yaml
+    url: https://raw.githubusercontent.com/ACL4SSR/ACL4SSR/master/Clash/Providers/ProxyGFWlist.yaml
+    path: ./rule-providers/proxyGFW.yaml
+    interval: 86400
+    proxy: 规则更新
+
+# 规则顺序：越靠前优先级越高，最终由“漏网之鱼”兜底。
+rules:
+  # Google 关键字优先匹配。
+- DOMAIN-KEYWORD,google,Google
+  # 广告拦截。
+- RULE-SET,reject,广告拦截
+- RULE-SET,BanAD,广告拦截
+  # 境外应用与服务。
+- RULE-SET,telegramcidr,电报消息,no-resolve
+- RULE-SET,google,Google
+- RULE-SET,Ai,Ai平台
+- RULE-SET,youtube,油管视频
+- RULE-SET,bilibili,哔哩哔哩
+- RULE-SET,steam,Steam
+- RULE-SET,msServe,微软服务
+  # 中国大陆及私有网络直连（含国内 IPv6）。
+- RULE-SET,steamCN,DIRECT
+- RULE-SET,ChinaMedia,DIRECT
+- RULE-SET,ChinaDomain,DIRECT
+- RULE-SET,ChinaCompanyIp,DIRECT
+- RULE-SET,private,DIRECT
+- RULE-SET,direct,DIRECT
+  # 境外与受限站点交给代理模式。
+- RULE-SET,tld-not-cn,代理模式
+- RULE-SET,gfw,代理模式
+- RULE-SET,greatfire,代理模式
+- RULE-SET,proxyGFW,代理模式
+- RULE-SET,ChinaIp,DIRECT
+- RULE-SET,ChinaIpv6,DIRECT
+  # 未命中流量统一兜底。
+- MATCH,漏网之鱼
