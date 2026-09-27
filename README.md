@@ -10,24 +10,24 @@ RC2.2 延续 RC2.1 的先安装后填写订阅流程，并补足订阅加载反�
 
 ## 当前状态
 
-RC2.2 本地构建产物待实机全新安装验证；尚未发布到 GitHub：
+RC2.2 已作为 GitHub 预发布 `v2.6-rc2.2` 发布；全新安装和 RC2 在线升级仍待实机验证：
 
 1. `config/config.template.yaml` 保留规则集与策略组；首次安装时先保存带占位符的模板，填写订阅后再校验和启动。CLI `--subscription-file` 仍支持一步完成。
 2. 全新安装模板的 MetaCubeXD 控制器使用 `0.0.0.0:9099`，初始密钥为 `123456`；该默认值是已知的，安装后应尽快修改。现有安装升级不会套用这两个值。
 3. GitHub Actions 已下载并校验官方 Android arm64 Mihomo `v1.19.31`；来源、压缩前后 SHA-256、ELF 架构和 GPL-3.0 许可记录位于 `runtime/`。二进制保持 Git 忽略，只进入发布包。
-4. 本地构建器为后续不可变标签 `v2.6-rc2.2` 生成清单和 SHA-256；标签发布前请使用本地完整包安装。已发布的 RC2 不会被覆盖。
+4. 发布清单固定到不可变标签 `v2.6-rc2.2`，安装时核对字节数和 SHA-256；已发布的 RC2 不会被覆盖。
 5. 域名 DoH 改为 `dns.alidns.com` 和 `doh.pub`；`default-nameserver` 的 IP 引导解析保持不变。
 
 未填写订阅时仅安装后端，不启动 Mihomo、不下发 TProxy 规则，也不开启开机自启。
 
 ## 用户流程
 
-1. 在 UFI-Tools 中启用高级功能，移除旧版 F50 Mihomo JS 后导入 RC2.2 JS，避免两个版本同时加载。
+1. 在 UFI-Tools 中启用高级功能，移除旧版 F50 Mihomo JS 后导入 RC2.2 JS，并刷新页面，避免两个版本同时加载。
 2. 点击“F50 Mihomo”。
-3. 后端缺失时自动打开首次安装向导。
-4. 同时选择本地 `release-manifest.json` 与完整 `.tar` 包；RC2.2 发布后也可选择从 GitHub 安装，由 F50 直接下载发布包，避开浏览器的 Release 资产 CORS 限制。
-5. 前端上传文件，设备核对 SHA-256，执行包内 `install.sh`，提交待配置后端。
-6. 安装后弹出订阅窗口；填写自己的 HTTPS 链接。窗口持续显示校验、启动进度，并在完成后查询 Mihomo `main` 提供器的节点数。只有节点已加载且双栈规则完整才显示“就绪”；否则保留警告和重试入口。
+3. 后端缺失或版本不匹配时自动打开安装/升级向导。
+4. 选择“从 GitHub 安装”，由 F50 下载发布包；或同时选择本地 `release-manifest.json` 与完整 `.tar` 包。
+5. 设备核对字节数和 SHA-256 后执行包内 `install.sh`。现有 RC2 升级只替换脚本并重启，不覆盖配置、内核、provider、UI 和日志。
+6. 仅全新安装会弹出订阅窗口；填写自己的 HTTPS 链接。窗口持续显示校验、启动进度，并在完成后查询 Mihomo `main` 提供器的节点数。只有节点已加载且双栈规则完整才显示“就绪”；否则保留警告和重试入口。
 
 不会在页面加载时自动执行 Root 命令；安装必须由用户点击并确认。
 
@@ -141,7 +141,7 @@ pwsh -File .\tools\build-release.ps1
 
 构建器已固定 `Kiro-Durandal/MihomoForUFI` 与 `v2.6-rc2.2`，会校验 Mihomo 二进制、许可证和对应源码归档，生成安装 `.tar`，并回写最终 `release-manifest.json` 与源码 `SHA256SUMS.txt`。
 
-仓库还提供待发布的 `Publish RC2.2` GitHub Actions 工作流。发布前需先完成实机全新安装验证；工作流不会覆盖已有标签。
+仓库的 `Publish RC2.2` GitHub Actions 工作流已完成本次构建、校验、打标签和预发布；工作流拒绝覆盖已有标签。设备端实机验证仍待完成。
 
 发布产物应包括：
 
