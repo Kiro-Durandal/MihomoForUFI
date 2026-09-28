@@ -1,4 +1,4 @@
-# RC2.2 release checklist
+# RC2.2.1 release checklist
 
 ## Configuration review
 
@@ -24,6 +24,7 @@
 ## Installer verification
 
 - [x] Run local front-end config-edit tests for CRLF template, legacy port migration, and main provider node count.
+- [x] Run local device-side release-fetch tests for three direct attempts, optional proxy fallback, command length and cleanup; use the device-tested RC2.2 hotfix as the RC2.2.1 front-end basis.
 - [ ] Test a clean F50 installation with no `/data/f50-mihomo` directory: backend installed, configured=0, core stopped, no TProxy or boot entry.
 - [ ] Fill the HTTPS subscription in the front end: config validates, core starts, dual-stack health passes, configured=1, boot entry enabled.
 - [ ] Verify the subscription dialog keeps progress visible and reports the `main` provider node count without exposing node names or credentials.
@@ -33,7 +34,7 @@
 - [ ] Upgrade an RC2.1 backend that still has `setup-pending`: preserve its config and stopped state, then fill the subscription and confirm the legacy default port becomes 9099.
 - [ ] Compare the MetaCubeXD row with UFI-Tools native `title`/`btn` styling on the device.
 - [ ] Test failed first subscription: pending config remains, no boot entry is added, and retry succeeds.
-- [ ] Test RC1/RC2/RC2.1 to RC2.2 upgrade with a non-9099 controller port; verify `config.yaml` SHA-256 and bytes are unchanged before the explicit migration action.
+- [ ] Test RC1/RC2/RC2.1 to RC2.2.1 upgrade with a non-9099 controller port; verify `config.yaml` SHA-256 and bytes are unchanged before the explicit migration action.
 - [ ] Test `rollback-last.sh` restores the pre-upgrade scripts while leaving `config.yaml` SHA-256 and bytes unchanged.
 - [ ] Test destructive uninstall removes the process, IPv4/IPv6 rules, boot entry, `/data/f50-mihomo`, failed/staging leftovers and boot log.
 - [ ] Confirm uninstall does not remove the UFI-Tools front-end registration or files under `/sdcard/Download`.
@@ -56,11 +57,11 @@
 ## Publication
 
 - [x] Add the user-selected MIT license for original project files and document that it does not relicense Mihomo.
-- [x] Pin `OWNER/REPOSITORY` to `Kiro-Durandal/MihomoForUFI` and the proposed release tag to `v2.6-rc2.2`.
-- [ ] Confirm the repository, immutable `v2.6-rc2.2` tag and Release are anonymously readable after publication.
+- [x] Pin `OWNER/REPOSITORY` to `Kiro-Durandal/MihomoForUFI` and the proposed release tag to `v2.6-rc2.2.1`.
+- [ ] Confirm the repository, immutable `v2.6-rc2.2.1` tag and Release are anonymously readable after publication.
 - [x] Locally build the `.tar`, then verify its byte size and SHA-256 against the manifest; device verification is still pending.
-- [x] Add a release workflow that pins upstream downloads and refuses an existing RC2.2 tag.
+- [x] Add a release workflow that pins upstream downloads and refuses an existing RC2.2.1 tag.
 - [x] Confirm the build script set `INSTALL_MANIFEST_URL` to the intended immutable raw manifest URL.
-- [ ] Re-run source and artifact credential scans.
-- [ ] Review the exact Git tree before push.
+- [x] Re-run source and artifact credential scans; the template contains only the public placeholder and documented initial controller secret.
+- [x] Review the exact Git tree before push; retain old versioned JS/workflows for prior releases and add the RC2.2.1 files.
 - [ ] Publish the JS, manifest, installer `.tar`, `mihomo-v1.19.31-source.tar.gz` and `SHA256SUMS.release.txt` as the same release version.

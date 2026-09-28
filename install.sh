@@ -1,6 +1,6 @@
 #!/system/bin/sh
 
-# Unified installer for F50 Mihomo Beta 2.6-RC2.2.
+# Unified installer for F50 Mihomo Beta 2.6-RC2.2.1.
 # - Fresh install without a subscription: commits the backend and template in
 #   a pending state. Applying a valid configuration starts Mihomo later.
 # - Fresh install with a complete configuration: validates, commits, starts,
@@ -11,7 +11,7 @@
 set -u
 
 D=$(CDPATH= cd -- "$(dirname "$0")" 2>/dev/null && pwd) || exit 1
-VERSION=2.6-RC2.2
+VERSION=2.6-RC2.2.1
 BASE=/data/f50-mihomo
 BIN=$BASE/bin/mihomo
 CFG=$BASE/config/config.yaml

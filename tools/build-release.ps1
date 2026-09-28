@@ -9,12 +9,12 @@ param(
 
     [Parameter(Mandatory = $false)]
     [ValidatePattern('^v[A-Za-z0-9._-]+$')]
-    [string]$Tag = 'v2.6-rc2.2'
+    [string]$Tag = 'v2.6-rc2.2.1'
 )
 
 $ErrorActionPreference = 'Stop'
 $sourceRoot = [IO.Path]::GetFullPath((Split-Path -Parent $PSScriptRoot))
-$rootName = 'F50-Mihomo-UFI-Device-Manager-Beta2.6-RC2.2'
+$rootName = 'F50-Mihomo-UFI-Device-Manager-Beta2.6-RC2.2.1'
 $assetName = "$rootName-arm64.tar"
 $dist = [IO.Path]::GetFullPath((Join-Path $sourceRoot 'dist'))
 $work = [IO.Path]::GetFullPath((Join-Path $sourceRoot '.release-work'))
@@ -22,8 +22,8 @@ $payload = Join-Path $work $rootName
 $manifestUrl = "https://raw.githubusercontent.com/$Owner/$Repository/$Tag/release-manifest.json"
 $gitMetadataPrefix = [IO.Path]::GetFullPath((Join-Path $sourceRoot '.git')) + [IO.Path]::DirectorySeparatorChar
 
-if ($Tag -ne 'v2.6-rc2.2') {
-    throw 'This RC2.2 source only accepts the immutable tag v2.6-rc2.2.'
+if ($Tag -ne 'v2.6-rc2.2.1') {
+    throw 'This RC2.2.1 source only accepts the immutable tag v2.6-rc2.2.1.'
 }
 if ($Owner -cne 'Kiro-Durandal' -or $Repository -cne 'MihomoForUFI') {
     throw 'This RC2 source is pinned to Kiro-Durandal/MihomoForUFI.'
@@ -132,7 +132,7 @@ if ($templateText -match '(?mi)^\s+(?:server|server-port|uuid|password|private-k
     throw 'config.template.yaml contains a node address or credential field.'
 }
 
-$jsPath = Join-Path $sourceRoot 'f50-mihomo-ufi-device-manager-beta2.6-rc2.2.js'
+$jsPath = Join-Path $sourceRoot 'f50-mihomo-ufi-device-manager-beta2.6-rc2.2.1.js'
 $jsText = Get-Content -LiteralPath $jsPath -Raw
 if ($jsText.Contains('__GITHUB_RAW_RELEASE_MANIFEST_URL__')) {
     $jsText = $jsText.Replace('__GITHUB_RAW_RELEASE_MANIFEST_URL__', $manifestUrl)
@@ -183,7 +183,7 @@ $payloadItems = @(
     'install-upgrade.sh',
     'rollback-last.sh',
     'ufi-backend.sh',
-    'f50-mihomo-ufi-device-manager-beta2.6-rc2.2.js',
+    'f50-mihomo-ufi-device-manager-beta2.6-rc2.2.1.js',
     'config',
     'runtime',
     'scripts'
@@ -223,7 +223,7 @@ Copy-Item -LiteralPath $runtimeSourceArchivePath -Destination $runtimeSourceAsse
 $runtimeSourceUrl = "https://github.com/$Owner/$Repository/releases/download/$Tag/$runtimeSourceAssetName"
 $manifest = [ordered]@{
     schema = 1
-    version = '2.6-RC2.2'
+    version = '2.6-RC2.2.1'
     published = $true
     package = [ordered]@{
         name = $assetName

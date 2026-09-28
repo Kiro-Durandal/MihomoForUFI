@@ -1,0 +1,137 @@
+name: Publish RC2.2.1
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/release-rc2.2.1.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: publish-v2.6-rc2.2.1
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Build, tag and publish RC2.2.1
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      RELEASE_TAG: v2.6-rc2.2.1
+      MIHOMO_GZ_SHA256: de00bc53ed151636ca078c812a82a5315687d8d52164db230f1935b2a37904f6
+      MIHOMO_SOURCE_SHA256: 5a04aa9cf4520e06fa1c13d37b6aca49209479690722d485c40034ab17f8581f
+
+    steps:
+      - name: Check out the release source
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          fetch-depth: 0
+
+      - name: Refuse an existing immutable tag
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git ls-remote --exit-code --tags origin "refs/tags/${RELEASE_TAG}" >/dev/null 2>&1; then
+            echo "Refusing to replace existing tag ${RELEASE_TAG}." >&2
+            exit 1
+          fi
+
+      - name: Download and verify the pinned Mihomo runtime and source
+        shell: bash
+        run: |
+          set -euo pipefail
+          runtime_gz="${RUNNER_TEMP}/mihomo-android-arm64-v8-v1.19.31.gz"
+          mkdir -p runtime
+          curl --fail --location --proto '=https' --tlsv1.2 \
+            --output "${runtime_gz}" \
+            'https://github.com/MetaCubeX/mihomo/releases/download/v1.19.31/mihomo-android-arm64-v8-v1.19.31.gz'
+          printf '%s  %s\n' "${MIHOMO_GZ_SHA256}" "${runtime_gz}" | sha256sum --check --strict
+          gzip --decompress --stdout "${runtime_gz}" > runtime/mihomo
+          chmod 0755 runtime/mihomo
+
+          curl --fail --location --proto '=https' --tlsv1.2 \
+            --output runtime/mihomo-v1.19.31-source.tar.gz \
+            'https://codeload.github.com/MetaCubeX/mihomo/tar.gz/refs/tags/v1.19.31'
+          printf '%s  %s\n' "${MIHOMO_SOURCE_SHA256}" 'runtime/mihomo-v1.19.31-source.tar.gz' \
+            | sha256sum --check --strict
+
+      - name: Validate source scripts
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check f50-mihomo-ufi-device-manager-beta2.6-rc2.2.1.js
+          node tools/test-config-edit.js
+          node tools/test-release-fetch.js
+          while IFS= read -r -d '' script; do
+            bash -n "${script}"
+          done < <(find . -path './.git' -prune -o -name '*.sh' -type f -print0)
+          pwsh -NoLogo -NoProfile -Command \
+            '$errors = $null; [System.Management.Automation.Language.Parser]::ParseFile("tools/build-release.ps1", [ref]$null, [ref]$errors) | Out-Null; if ($errors.Count) { $errors | Format-List *; exit 1 }'
+
+      - name: Build immutable release assets
+        shell: pwsh
+        run: ./tools/build-release.ps1
+
+      - name: Verify the generated release
+        shell: bash
+        run: |
+          set -euo pipefail
+          asset='dist/F50-Mihomo-UFI-Device-Manager-Beta2.6-RC2.2.1-arm64.tar'
+          manifest='dist/release-manifest.json'
+          source_asset='dist/mihomo-v1.19.31-source.tar.gz'
+
+          test "$(jq -r '.published' "${manifest}")" = 'true'
+          test "$(jq -r '.package.sha256' "${manifest}")" = "$(sha256sum "${asset}" | cut -d ' ' -f 1)"
+          test "$(jq -r '.package.bytes' "${manifest}")" = "$(stat --format='%s' "${asset}")"
+          test "$(jq -r '.third_party_source.sha256' "${manifest}")" = "$(sha256sum "${source_asset}" | cut -d ' ' -f 1)"
+          test "$(jq -r '.third_party_source.bytes' "${manifest}")" = "$(stat --format='%s' "${source_asset}")"
+
+          (cd dist && sha256sum --check --strict SHA256SUMS.release.txt)
+
+          archive_entries="$(tar --list --file "${asset}")"
+          grep --fixed-strings --line-regexp \
+            'F50-Mihomo-UFI-Device-Manager-Beta2.6-RC2.2.1/LICENSE' <<<"${archive_entries}"
+          grep --fixed-strings --line-regexp \
+            'F50-Mihomo-UFI-Device-Manager-Beta2.6-RC2.2.1/THIRD_PARTY_NOTICES.md' <<<"${archive_entries}"
+          if grep --fixed-strings 'mihomo-v1.19.31-source.tar.gz' <<<"${archive_entries}"; then
+            echo 'The corresponding-source archive must remain a separate release asset.' >&2
+            exit 1
+          fi
+
+          diff --unified \
+            <(printf '%s\n' release-manifest.json SHA256SUMS.txt | sort) \
+            <(git diff --name-only | sort)
+
+      - name: Commit the finalized manifest and tag
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -- release-manifest.json SHA256SUMS.txt
+          git diff --cached --check
+          git commit -m 'chore: finalize v2.6-rc2.2.1 release manifest'
+          git push origin HEAD:main
+          git tag --annotate "${RELEASE_TAG}" --message 'F50 Mihomo UFI-Tools Beta 2.6-RC2.2.1'
+          git push origin "refs/tags/${RELEASE_TAG}"
+
+      - name: Publish the GitHub prerelease
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh release create "${RELEASE_TAG}" \
+            dist/f50-mihomo-ufi-device-manager-beta2.6-rc2.2.1.js \
+            dist/release-manifest.json \
+            dist/F50-Mihomo-UFI-Device-Manager-Beta2.6-RC2.2.1-arm64.tar \
+            dist/mihomo-v1.19.31-source.tar.gz \
+            dist/SHA256SUMS.release.txt \
+            --verify-tag \
+            --prerelease \
+            --title 'F50 Mihomo UFI-Tools Beta 2.6-RC2.2.1' \
+            --generate-notes

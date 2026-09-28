@@ -1,5 +1,5 @@
 #!/system/bin/sh
-# F50 Mihomo UFI-Tools backend 2.6-rc2.2
+# F50 Mihomo UFI-Tools backend 2.6-rc2.2.1
 # Fixed-action backend: no eval, no arbitrary shell execution.
 
 set -u
@@ -239,7 +239,7 @@ status_action() {
   UI=0
   [ -f "$BASE/ui/index.html" ] && UI=1
 
-  BACKEND_VERSION=2.6-rc2.2
+  BACKEND_VERSION=2.6-rc2.2.1
   VERSION=''
   if [ -x "$BIN" ]; then
     VERSION="$($BIN -v 2>/dev/null | head -n 1 || true)"

@@ -3,7 +3,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const root = path.resolve(__dirname, '..');
-const source = fs.readFileSync(path.join(root, 'f50-mihomo-ufi-device-manager-beta2.6-rc2.2.js'), 'utf8');
+const source = fs.readFileSync(path.join(root, 'f50-mihomo-ufi-device-manager-beta2.6-rc2.2.1.js'), 'utf8');
 const begin = source.indexOf('  const countIndent =');
 const end = source.indexOf('  const maskSubscriptionUrl =', begin);
 assert.ok(begin >= 0 && end > begin, 'front-end config helpers must be present');
