@@ -6,15 +6,15 @@
     "name": "Mihomo-UFI-Device-Manager-Beta2.6-RC2.3-arm64.tar",
     "root_dir": "Mihomo-UFI-Device-Manager-Beta2.6-RC2.3",
     "url": "https://github.com/Kiro-Durandal/MihomoForUFI/releases/download/v2.6-rc2.3/Mihomo-UFI-Device-Manager-Beta2.6-RC2.3-arm64.tar",
-    "sha256": "304d2dd371d08d8418d8b6cf1af22ef39f18330326918b7d010e94aed781d541",
-    "bytes": 22515200
+    "sha256": "76dbbfab48069720ac24027ced4cadcd60c64f42225859eb22dcfade3bc5d034",
+    "bytes": 22517760
   },
   "upgrade_package": {
     "name": "Mihomo-UFI-Device-Manager-Beta2.6-RC2.3-upgrade.tar",
     "root_dir": "Mihomo-UFI-Device-Manager-Beta2.6-RC2.3",
     "url": "https://github.com/Kiro-Durandal/MihomoForUFI/releases/download/v2.6-rc2.3/Mihomo-UFI-Device-Manager-Beta2.6-RC2.3-upgrade.tar",
-    "sha256": "b8261990115fce8467f4cdc5d4f01dd3059e73c4b3ab8b54377dd22c634b5316",
-    "bytes": 201728
+    "sha256": "9d79d893ee27d9c96a2beaf7f993feb91a422f0fe3baf08f723456c6c900d6ea",
+    "bytes": 204800
   },
   "third_party_source": {
     "component": "MetaCubeX/mihomo",
