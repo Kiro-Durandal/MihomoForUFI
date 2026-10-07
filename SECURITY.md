@@ -16,13 +16,13 @@ confirmation it permanently removes the backend configuration, provider cache,
 logs and backups. It validates the exact backend path, refuses symlink targets
 and aborts if the Mihomo process or owned firewall chains remain active.
 
-When reporting a problem, use the manager's redacted diagnostic action and
-review the output manually before sharing it. Ordinary Mihomo and boot logs are
-not redacted reports.
+The diagnostic export feature was removed. Review and redact logs/configs
+manually before sharing; ordinary Mihomo and boot logs are not redacted.
+Canceling the local config editor does not upload or save the config.
 
 ## Installation trust boundary
 
-- The UFI-Tools script runs Root commands on the F50 device.
+- The UFI-Tools script runs Root commands on compatible Android devices.
 - Automatic installation accepts only the exact RC2 manifest schema and version.
 - Release packages are checked for exact byte size and SHA-256 before extraction.
 - The manifest URL must use an immutable Git tag.

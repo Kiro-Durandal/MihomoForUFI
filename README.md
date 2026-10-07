@@ -1,166 +1,55 @@
-# F50 Mihomo UFI-Tools Device Manager Beta 2.6-RC2.2.1
+# Mihomo UFI-Tools 设备管理 Beta 2.6-RC2.3
 
-RC2.2.1 修复在线安装流程：发布清单与安装包由 F50 设备端下载，优先直连重试，失败后尝试本机 7892 代理；下载、校验和安装分步执行。RC2.2 设备已用同一修复代码完成在线升级验证。双栈代理行为保持不变：
+MiCatty 精简迭代版。基于 RC2.2.4 保留真实退出码和配置 SHA-256 校验，并按新的界面需求精简。面向满足条件的 Android arm64 UFI 设备，不再以 F50 命名界面、JS 或发布包。用户已于 2026-10-07 确认本迭代可用、目前未见错误并授权发布；此反馈不等同于所有设备、故障场景和性能基准均已验证。
 
-- 国内 IPv4/IPv6 规则可 `DIRECT`。
-- 国外流量继续使用用户在“手动选择”中指定的同一个节点。
-- 节点没有 IPv6 出口时，双栈应用可以自行回落 IPv4。
-- 国外纯 IPv6 在所选节点不支持时允许失败。
-- 不创建专用“IPv6 出口”组，不偷偷切换到其他节点。
+## 保留与新增
 
-## 当前状态
+- UFI 主页面管理入口名为 MiCatty；面板初始化失败不会隐藏入口，点击后才执行 Root 状态读取。
+- 服务：刷新状态、健康检查、停止、重启（停止状态下点重启也能启动）、开机自启。
+- 配置：下载配置、上传并应用、页面内编辑、更换订阅。
+- 控制器：设置 IPv4/IPv6 IP 与端口，不修改 secret；修改后自动重启并核验。
+- MetaCubeXD 主页面折叠面板继续保留，可自行展开、刷新网页。
+- 开机日志、Mihomo 日志和显式确认的彻底卸载继续保留。
 
-目标 GitHub 预发布标签为 `v2.6-rc2.2.1`。RC2.2.1 完整包的全新安装和升级仍需实机验证；已验证的是修复后的 RC2.2 前端从 RC2 在线升级到 RC2.2：
+删除单独启动、手动配置校验、创建/管理回滚点、手动检查订阅、脱敏诊断、管理窗口内的新标签/展开面板/控制器检查/UI 更新入口及其专用后端动作。订阅保存后的自动拉取、节点数量反馈、内部健康核验和失败自动恢复不属于被删功能。
 
-1. `config/config.template.yaml` 保留规则集与策略组；首次安装时先保存带占位符的模板，填写订阅后再校验和启动。CLI `--subscription-file` 仍支持一步完成。
-2. 全新安装模板的 MetaCubeXD 控制器使用 `0.0.0.0:9099`，初始密钥为 `123456`；该默认值是已知的，安装后应尽快修改。现有安装升级不会套用这两个值。
-3. GitHub Actions 已下载并校验官方 Android arm64 Mihomo `v1.19.31`；来源、压缩前后 SHA-256、ELF 架构和 GPL-3.0 许可记录位于 `runtime/`。二进制保持 Git 忽略，只进入发布包。
-4. 发布清单固定到不可变标签 `v2.6-rc2.2.1`，安装时核对字节数和 SHA-256；已发布的 RC2 不会被覆盖。
-5. 域名 DoH 改为 `dns.alidns.com` 和 `doh.pub`；`default-nameserver` 的 IP 引导解析保持不变。
+## 配置文件
 
-未填写订阅时仅安装后端，不启动 Mihomo、不下发 TProxy 规则，也不开启开机自启。
+下载名按浏览器下载时间生成：`MiConfig-YYYYMMDDHHmm.yaml`。例如 `MiConfig-202610032350.yaml`。后台应用名按设备本地应用时间生成同样的格式；请确保设备时钟正确。
 
-## 用户流程
+后台只保留一份当前 YAML，固定的 `config/config.yaml` 是指向它的文件链接，不是第二份内容。这既保留内核启动时记住的配置路径，也支持 MetaCubeXD 和内核默认重载。同一分钟多次保存使用原子替换；成功后清理旧配置、上传源文件和临时保护副本，不再积累手动回滚点。
 
-1. 在 UFI-Tools 中启用高级功能，移除旧版 F50 Mihomo JS 后导入 RC2.2.1 JS，并刷新页面，避免两个版本同时加载。
-2. 点击“F50 Mihomo”。
-3. 后端缺失或版本不匹配时自动打开安装/升级向导。
-4. 选择“从 GitHub 安装”，由 F50 下载发布包；或同时选择本地 `release-manifest.json` 与完整 `.tar` 包。
-5. 设备核对字节数和 SHA-256 后执行包内 `install.sh`。现有 RC2 升级只替换脚本并重启，不覆盖配置、内核、provider、UI 和日志。
-6. 仅全新安装会弹出订阅窗口；填写自己的 HTTPS 链接。窗口持续显示校验、启动进度，并在完成后查询 Mihomo `main` 提供器的节点数。只有节点已加载且双栈规则完整才显示“就绪”；否则保留警告和重试入口。
+升级不改写现有配置。旧版的 config.yaml 在首次主动应用配置后才切换为 MiConfig 命名。旧版已经产生的历史备份不擅自删除；新操作不继续累积此类历史。若极端磁盘故障导致保护副本无法恢复，会保留该副本并报错，而不误报成功。
 
-不会在页面加载时自动执行 Root 命令；安装必须由用户点击并确认。
+页面编辑：保存后才上传并应用，取消完全不写入；未改动直接保存不重启。窗口打开后若配置被其他操作修改，保存会拒绝覆盖，须重新打开窗口。
 
-## 文件结构
+编辑窗口只在外层顶部保留“取消”和“保存并应用”，没有底部重复的“关闭”。编辑内容独立滚动，顶部按钮始终可见；打开时暂时隐藏管理窗口，退出后恢复。控制器、订阅弹窗采用独立 ID，不会再误删同名入口按钮。
 
-```text
-f50-mihomo-ufi-device-manager-beta2.6-rc2.2.1.js UFI-Tools 前端与首次安装向导
-LICENSE                                       原创项目文件的 MIT 许可证
-THIRD_PARTY_NOTICES.md                        第三方组件许可、来源与校验说明
-install.sh                                    全新安装/升级统一入口
-install-upgrade.sh                            现有安装事务式升级器
-rollback-last.sh                              最近一次脚本升级回退
-ufi-backend.sh                                固定动作后端
-config/config.template.yaml                   脱敏配置模板
-CONFIG-REVIEW.md                              DNS、IPv6、更新路径和泄露风险复核结论
-runtime/README.md                              内核/UI/种子数据打包说明
-runtime/MIHOMO-PROVENANCE.md                   内核版本、来源、架构及校验记录
-runtime/LICENSE.mihomo                         Mihomo 上游 GPL-3.0 许可证
-runtime/mihomo-v1.19.31-source.tar.gz          构建时校验、作为独立 Release 资产发布的对应源码
-release-manifest.json                         版本固定的发布清单模板
-scripts/env.sh                                运行参数
-scripts/firewall-start.sh                     IPv4/IPv6 TProxy 建立
-scripts/firewall-stop.sh                      IPv4/IPv6 TProxy 清理
-scripts/start.sh                              启动、校验与日志限容
-scripts/stop.sh                               安全停止
-scripts/status.sh                             状态检测
-scripts/boot-start.sh                         开机等待网络并启动
-scripts/uninstall.sh                          彻底卸载后端与运行数据
-tools/build-release.ps1                       发布包构建与基础泄露扫描
-tools/test-config-edit.js                     订阅 URL、旧端口迁移与节点计数回归测试
-.github/workflows/release-rc2.2.1.yml           手动触发、校验后创建 RC2.2.1 tag 与 Release
-RELEASE-CHECKLIST.md                          发布前人工检查项
-SECURITY.md                                   安全和漏洞报告说明
-```
+## 控制器设置
 
-## 手动测试全新安装
+按钮读取并只替换唯一的 external-controller。IP 支持 IPv4/IPv6，端口为 1–65535；IPv6 写为 `[地址]:端口`。保持其他字段和密钥不变，失败恢复原文件。
 
-制作可安装包前需要确认 `runtime/mihomo` 通过构建器固定的版本、架构与 SHA-256 校验。直接安装待配置后端：
+`0.0.0.0` / `::` 为通配监听；`127.0.0.1` / `::1` 仅允许设备本地访问，其他设备上的 MetaCubeXD 将不能直连。这是监听设置的效果，不是插件会额外暴露控制器。公开模板仍默认 0.0.0.0:9099 和 123456；已有安装不套用这些值，安装后应修改公开默认密钥。
 
-```sh
-sh /sdcard/Download/F50-Mihomo-UFI-Device-Manager-Beta2.6-RC2.2.1/install.sh
-```
+## 提速方式
 
-随后在前端“更换订阅链接”中完成首次配置。也可在 CLI 安装时传入 `--subscription-file /sdcard/Download/my-subscription.txt`，继续一步完成。
+普通 DNS、规则与订阅配置优先通过 Mihomo `/configs?force=true` 整份热加载：内核负责解析一次，不停进程，也不拆建已有防火墙。控制器/密钥、TProxy 端口、IPv6 开关、DNS 监听、IPv6 Fake-IP 范围、TUN 或路由边界变化时采用完整校验和重启。热加载 API 不存在时回退普通路径；解析、健康或订阅更新失败会报错并恢复。
 
-也可以提供一份完整配置，绕过模板生成：
+配置应用返回状态回执，前端复用它，不重复读取状态卡；订阅只额外查询一次节点数量，不重复做健康检查。删除分段计时与每秒进度计时器，只保留既有上传/应用总耗时反馈。
 
-```sh
-sh /sdcard/Download/F50-Mihomo-UFI-Device-Manager-Beta2.6-RC2.2.1/install.sh \
-  --config /sdcard/Download/config.yaml
-```
+已安装用户在线更新自动选择不含内核的 `*-upgrade.tar`，避免重新下载约 22 MB 完整包。全新安装仍需 `*-arm64.tar`。两种包都校验大小和 SHA-256；不以关闭 TLS/完整性检查换速度。直连失败后尝试本机代理，并保留总共三次直连机会。
 
-`--config` 不代表配置是安全的；它仍会由 Mihomo 校验，但其中的订阅、节点和密钥由提供者自行负责。
+## 安装与升级
 
-## 现有安装升级
+1. 从 [RC2.3 Release](https://github.com/Kiro-Durandal/MihomoForUFI/releases/tag/v2.6-rc2.3) 下载 `mihomo-ufi-device-manager-beta2.6-rc2.3.js`，在 UFI-Tools 中停用/删除旧 JS，导入新 JS 并刷新页面，避免新旧入口同时加载。
+2. 点击 MiCatty，使用“从 GitHub 安装”在线安装/升级。已有内核自动选用脚本升级包；升级不覆盖现有配置。也可本地选择同一 Release 的 `release-manifest.json` 和 `Mihomo-UFI-Device-Manager-Beta2.6-RC2.3-upgrade.tar`；已有安装也接受完整 arm64 包。
+3. 全新安装：选择上述清单和 `Mihomo-UFI-Device-Manager-Beta2.6-RC2.3-arm64.tar`。未填订阅先安装待配置后端，不启动代理；随后填链接或上传完整配置。
+4. 不要混用不同版本的清单与包。独立的 Mihomo 对应源码压缩包不属于安装输入。自己构建时，上述资产位于 dist 目录。
 
-统一入口会自动识别完整的 `/data/f50-mihomo`，只替换 RC2.2.1 脚本。现有 `config.yaml` 不重写、不迁移，也不做格式化；内核、provider、UI、日志和选择状态同样保留。前端与后端会从现有配置动态读取 `external-controller` 的 TCP 端口：
+## 兼容边界与安全
 
-```sh
-sh /sdcard/Download/F50-Mihomo-UFI-Device-Manager-Beta2.6-RC2.2.1/install.sh
-```
+为保留旧设备数据与已有防火墙规则，内部 `/data/f50-mihomo`、旧链名和 UFI 应用包路径保留为兼容标识；它们不限制硬件型号。要求 Android arm64、UFI Root 能力、br0 和 IPv4/IPv6 TProxy。默认热点 IPv4 网段仍为 192.168.0.0/24；不同网段/接口须调整运行参数，不能据此承诺所有设备即装即用。
 
-也可以继续直接使用：
+国内 IPv6 仍按 ChinaIpv6 DIRECT；国外使用用户选定节点，允许双栈应用回落 IPv4，不新增 IPv6 专用分流组。国外纯 IPv6 能否访问取决于所选节点能力。
 
-```sh
-sh /sdcard/Download/F50-Mihomo-UFI-Device-Manager-Beta2.6-RC2.2.1/install-upgrade.sh
-```
-
-注意：RC1/RC2/RC2.1 升级不会用 RC2.2.1 `config.template.yaml` 覆盖旧配置，连 DNS、`external-controller` 和 secret 也不会修改。模板中的 `0.0.0.0:9099` 与 `123456` 仅用于全新安装。若 RC2.1 仍处于待填订阅状态，升级只替换脚本并保持服务停止；随后首次填写订阅时，前端会把旧模板默认的 `0.0.0.0:9090` 一并改为 9099。若现有配置已正常运行但仍使用 9090，可先点“检查控制器”，再明确点击“控制器改用 9099”；迁移会创建配置回滚点并重启 Mihomo。想采用新 DNS 时，需另行修改现有配置并上传应用。
-
-## 彻底卸载
-
-设备管理窗口的“危险操作”区提供“彻底卸载后端”。确认后会：
-
-- 停止 Mihomo，并清除 IPv4/IPv6 TProxy、DNS 链和策略路由；
-- 删除 UFI-Tools 开机脚本中的 F50 Mihomo 启动项；
-- 永久删除 `/data/f50-mihomo`、安装/失败遗留目录及开机日志；
-- 同时删除配置、订阅、provider 缓存、日志和回滚备份，不创建恢复副本。
-
-UFI-Tools 中已导入的前端 JS 与 `/sdcard/Download` 中的发布包不属于后端目录，需用户手动删除。
-
-## 事务与失败处理
-
-- 全新安装先写入 `/data/f50-mihomo.install.*`。
-- 暂存内核无法运行或配置校验失败时，不创建正式安装目录。
-- 首次启动或双栈健康检查失败时，停止服务并把现场移动为 `/data/f50-mihomo.failed.*`。
-- 现有安装升级沿用 RC1 的脚本备份和自动恢复机制，但备份对象只有将要替换的脚本。
-- `config.yaml` 在升级和回退中都只读，不进入升级备份，也不会被写回；可用升级前后 SHA-256 验证内容完全一致。
-- `rollback-last.sh` 只回退最近一次脚本升级，不删除或改写配置、provider、UI、日志及其他运行数据。
-
-## IPv6 设计
-
-F50 内核没有 `ip6tables nat` 表，因此 IPv6 不复制 IPv4 DNS REDIRECT：
-
-- IPv4 DNS 继续 REDIRECT 到 `1053`；其他 IPv4 TCP/UDP TProxy 到 `7894`。
-- IPv6 公网 TCP/UDP 统一 TProxy 到 `7894`。
-- `dns.fake-ip-range6` 在 ULA 旁路之前捕获。
-- 链路本地、多播、ULA、保留范围和 `br0` 当前直连前缀旁路。
-- 配置通过 `ChinaIpv6` 规则集决定国内 IPv6 `DIRECT`。
-- 没有 IPv6 出口的代理节点不会触发自动换节点。
-
-## 发布
-
-不要直接把整个上级工作区初始化为 Git 仓库。只发布本 RC2.2.1 目录，并先完成 `CONFIG-REVIEW.md` 与 `RELEASE-CHECKLIST.md`。
-
-构建脚本会拒绝缺少内核、带待审定标记或含明显凭据模式的源目录：
-
-```powershell
-pwsh -File .\tools\build-release.ps1
-```
-
-构建器已固定 `Kiro-Durandal/MihomoForUFI` 与 `v2.6-rc2.2.1`，会校验 Mihomo 二进制、许可证和对应源码归档，生成安装 `.tar`，并回写最终 `release-manifest.json` 与源码 `SHA256SUMS.txt`。
-
-仓库的 `Publish RC2.2.1` GitHub Actions 工作流会构建、校验、打标签和创建预发布；工作流拒绝覆盖已有标签。新版本完整包的设备端实机验证仍待完成。
-
-发布产物应包括：
-
-- `f50-mihomo-ufi-device-manager-beta2.6-rc2.2.1.js`
-- `release-manifest.json`
-- `F50-Mihomo-UFI-Device-Manager-Beta2.6-RC2.2.1-arm64.tar`
-- `mihomo-v1.19.31-source.tar.gz`
-- `SHA256SUMS.release.txt`
-
-安装 `.tar` 包含 Mihomo 可执行文件、上游 GPL 文本、来源记录、项目 MIT 文本及第三方声明，但不重复包含 1.2 MB 的源码归档；源码归档作为同一个 Release 的独立配套资产发布。
-
-## 许可证
-
-本项目原创的前端 JS、安装/管理脚本、模板与文档采用仓库根目录的 MIT 许可证。发布包内的 Mihomo 是独立的第三方程序，仍由上游 GNU GPL version 3 管辖；项目采用 MIT 不会把 Mihomo 重新许可为 MIT。完整边界、来源、二进制校验值和对应源码取得方式见 `THIRD_PARTY_NOTICES.md` 与 `runtime/MIHOMO-PROVENANCE.md`。
-
-## 安全说明
-
-- 不要提交真实 `config.yaml`、订阅、节点、provider 缓存、日志、诊断报告或 Mihomo 缓存数据库。
-- 发布清单必须指向不可变 tag，不能指向分支或 `latest`。
-- 不允许跳过 TLS 或 SHA-256 校验。
-- 订阅链接只应在用户设备本地写入生成的配置。
-- 模板中的 `123456` 是发布要求的初始值，不是私密密钥；由于控制器监听全部接口，长期使用它会构成局域网控制风险。
+界面仅点击时执行 Root 操作，不做后台轮询。配置编辑与配置下载包含真实订阅、节点或控制器密钥，原始日志也可能包含敏感信息；请勿公开。模板和构建资产不包含个人配置。原创文件采用 MIT；独立 Mihomo 内核保留上游 GPL-3.0 许可和对应源码。

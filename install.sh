@@ -1,6 +1,6 @@
 #!/system/bin/sh
 
-# Unified installer for F50 Mihomo Beta 2.6-RC2.2.1.
+# Unified installer for Mihomo Beta 2.6-RC2.3.
 # - Fresh install without a subscription: commits the backend and template in
 #   a pending state. Applying a valid configuration starts Mihomo later.
 # - Fresh install with a complete configuration: validates, commits, starts,
@@ -11,7 +11,7 @@
 set -u
 
 D=$(CDPATH= cd -- "$(dirname "$0")" 2>/dev/null && pwd) || exit 1
-VERSION=2.6-RC2.2.1
+VERSION=2.6-RC2.3
 BASE=/data/f50-mihomo
 BIN=$BASE/bin/mihomo
 CFG=$BASE/config/config.yaml
@@ -149,7 +149,7 @@ for REL in $REQUIRED_FILES; do
   sh -n "$D/$REL" || die "$REL 语法校验失败"
 done
 [ -f "$D/config/config.template.yaml" ] || die '发布包缺少 config/config.template.yaml'
-[ -f "$D/runtime/mihomo" ] || die '发布包缺少 runtime/mihomo；仓库源码包不能直接用于全新安装'
+[ -f "$D/runtime/mihomo.gz" ] || die '发布包缺少 runtime/mihomo.gz；仓库源码包不能直接用于全新安装'
 
 ABI=$(getprop ro.product.cpu.abi 2>/dev/null || true)
 case "$ABI" in
@@ -157,7 +157,7 @@ case "$ABI" in
   *) die "不支持的设备架构：${ABI:-unknown}（RC2 仅支持 arm64）" ;;
 esac
 
-ip link show br0 >/dev/null 2>&1 || die '未找到 F50 热点接口 br0'
+ip link show br0 >/dev/null 2>&1 || die '未找到 热点接口 br0'
 iptables -t mangle -S >/dev/null 2>&1 || die '设备缺少 IPv4 mangle 表'
 ip6tables -t mangle -S >/dev/null 2>&1 || die '设备缺少 IPv6 mangle 表'
 grep -qx TPROXY /proc/net/ip_tables_targets 2>/dev/null || die '内核缺少 IPv4 TPROXY target'
@@ -210,8 +210,16 @@ STAMP=$(date +%s 2>/dev/null || echo 0)$$
 STAGE=/data/f50-mihomo.install.$STAMP
 [ ! -e "$STAGE" ] || die "临时目录已存在：$STAGE"
 mkdir -p "$STAGE/bin" "$STAGE/config" "$STAGE/providers" "$STAGE/logs" "$STAGE/run" "$STAGE/backups" "$STAGE/scripts" || die '无法创建安装暂存目录'
+NEW_CONFIG_NAME=MiConfig-$(date +%Y%m%d%H%M).yaml
+printf '%s' "$NEW_CONFIG_NAME" | grep -Eq '^MiConfig-[0-9]{12}\.yaml$' || die '无法生成配置安装时间'
 
-cp "$D/runtime/mihomo" "$STAGE/bin/mihomo" || die '复制 Mihomo 内核失败'
+if command -v gzip >/dev/null 2>&1 && gzip -dc "$D/runtime/mihomo.gz" > "$STAGE/bin/mihomo"; then
+  :
+elif command -v toybox >/dev/null 2>&1 && toybox gzip -dc "$D/runtime/mihomo.gz" > "$STAGE/bin/mihomo"; then
+  :
+else
+  die '设备缺少可用的 gzip 解压器，或 Mihomo 压缩文件已损坏'
+fi
 chmod 700 "$STAGE/bin/mihomo" || die '设置 Mihomo 内核权限失败'
 "$STAGE/bin/mihomo" -v >/dev/null 2>&1 || die 'Mihomo 内核无法在此设备运行'
 
@@ -223,17 +231,18 @@ cp "$D/ufi-backend.sh" "$STAGE/scripts/ufi-backend.sh" || die '复制 ufi-backen
 chmod 700 "$STAGE/scripts/ufi-backend.sh" || die '设置 ufi-backend.sh 权限失败'
 
 if [ -n "$CONFIG_SOURCE" ]; then
-  cp "$CONFIG_SOURCE" "$STAGE/config/config.yaml" || die '复制配置失败'
+  cp "$CONFIG_SOURCE" "$STAGE/config/$NEW_CONFIG_NAME" || die '复制配置失败'
   CONFIG_READY=1
 elif [ -n "$SUBSCRIPTION_FILE" ]; then
-  render_template "$D/config/config.template.yaml" "$STAGE/config/config.yaml"
+  render_template "$D/config/config.template.yaml" "$STAGE/config/$NEW_CONFIG_NAME"
   CONFIG_READY=1
 else
-  cp "$D/config/config.template.yaml" "$STAGE/config/config.yaml" || die '复制待配置模板失败'
+  cp "$D/config/config.template.yaml" "$STAGE/config/$NEW_CONFIG_NAME" || die '复制待配置模板失败'
   touch "$STAGE/$PENDING_MARKER" || die '创建待配置标记失败'
   CONFIG_READY=0
 fi
-chmod 600 "$STAGE/config/config.yaml" 2>/dev/null || true
+chmod 600 "$STAGE/config/$NEW_CONFIG_NAME" 2>/dev/null || true
+ln -s "$NEW_CONFIG_NAME" "$STAGE/config/config.yaml" || die '创建固定配置入口失败'
 
 for DATA in GeoIP.dat GeoSite.dat country.mmdb geoip.metadb; do
   [ ! -f "$D/runtime/$DATA" ] || cp "$D/runtime/$DATA" "$STAGE/$DATA" || die "复制 $DATA 失败"
@@ -247,20 +256,20 @@ if [ -d "$D/runtime/providers" ]; then
 fi
 
 if [ "$CONFIG_READY" -eq 1 ]; then
-  "$STAGE/bin/mihomo" -t -d "$STAGE" -f "$STAGE/config/config.yaml" || die '配置校验失败；未修改正式安装目录'
+  "$STAGE/bin/mihomo" -t -d "$STAGE" -f "$STAGE/config/$NEW_CONFIG_NAME" || die '配置校验失败；未修改正式安装目录'
 fi
 
 mv "$STAGE" "$BASE" || die '无法提交正式安装目录'
 STAGE=''
 
 if [ "$CONFIG_READY" -eq 0 ]; then
-  say "OK: F50 Mihomo $VERSION 后端已安装，等待填写订阅链接。"
+  say "OK: Mihomo $VERSION 后端已安装，等待填写订阅链接。"
   say 'INFO: Mihomo 尚未启动，TProxy 和开机自启尚未启用。'
   exit 0
 fi
 
 if [ "$START_AFTER" -eq 1 ]; then
-  if ! OUTPUT=$(sh "$BASE/scripts/ufi-backend.sh" start 2>&1); then
+  if ! OUTPUT=$(sh "$BASE/scripts/ufi-backend.sh" restart 2>&1); then
     say "$OUTPUT" >&2
     sh "$BASE/scripts/stop.sh" >/dev/null 2>&1 || true
     FAILED=/data/f50-mihomo.failed.$STAMP
@@ -279,6 +288,6 @@ if [ "$ENABLE_BOOT" -eq 1 ]; then
   fi
 fi
 
-say "OK: F50 Mihomo $VERSION 全新安装完成"
+say "OK: Mihomo $VERSION 全新安装完成"
 [ "$START_AFTER" -eq 1 ] || say 'INFO: 已按 --no-start 安装，当前没有启动 Mihomo。'
 [ "$ENABLE_BOOT" -eq 1 ] || say 'INFO: 已按 --no-boot 跳过开机自启。'

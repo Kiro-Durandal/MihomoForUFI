@@ -86,7 +86,7 @@ ipt -t nat -A "$DNS_CHAIN4" -p tcp -j REDIRECT --to-ports "$DNS_PORT" || fail "�
 ipt -t nat -I PREROUTING 1 -i "$LAN_IF" -s "$LAN_NET4" -p udp --dport 53 -j "$DNS_CHAIN4" || fail "无法挂载 IPv4 UDP DNS"
 ipt -t nat -I PREROUTING 1 -i "$LAN_IF" -s "$LAN_NET4" -p tcp --dport 53 -j "$DNS_CHAIN4" || fail "无法挂载 IPv4 TCP DNS"
 
-# IPv6: this F50 kernel has TPROXY but no ip6tables nat table. Capture public
+# IPv6: the target kernel has TPROXY but no ip6tables nat table. Capture public
 # TCP/UDP (including public DNS) with TProxy. Preserve link-local, multicast,
 # ULA and the current on-link LAN prefixes. The configured fake-IP range is
 # deliberately captured before the ULA bypass because Mihomo's default

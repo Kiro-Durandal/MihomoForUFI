@@ -1,6 +1,6 @@
 #!/system/bin/sh
 
-# Transactional F50 Mihomo 2.6-RC2.2.1 dual-stack upgrade.
+# Transactional Mihomo 2.6-RC2.3 dual-stack upgrade.
 # Default: install, restart, verify, and automatically roll back on failure.
 # Use --stage-only to install without restarting the currently running service.
 
@@ -22,6 +22,14 @@ say() { printf '%s\n' "$*"; }
 release_lock() {
   rm -f "$INSTALL_LOCK/pid" 2>/dev/null || true
   rmdir "$INSTALL_LOCK" 2>/dev/null || true
+}
+
+discard_upgrade_backup() {
+  # Only the copy created by this invocation; older user backups are untouched.
+  case "$BACKUP_DIR" in "$BASE"/backups/upgrade-v26-[0-9]*) ;; *) return 1 ;; esac
+  [ ! -L "$BACKUP_DIR" ] || return 1
+  if [ "$(sed -n '1p' "$LAST_BACKUP" 2>/dev/null || true)" = "$BACKUP_DIR" ]; then rm -f "$LAST_BACKUP"; fi
+  rm -rf "$BACKUP_DIR"
 }
 
 acquire_lock() {
@@ -170,15 +178,17 @@ for NAME in $FILES; do
 done
 
 BACKUP_READY=0
-say 'Beta 2.6-RC2.2.1 脚本已原子安装；现有 config.yaml 未作任何修改。'
+say 'Beta 2.6-RC2.3 脚本已原子安装；现有 config.yaml 未作任何修改。'
 
 if [ "$PENDING_UPGRADE" -eq 1 ]; then
+  discard_upgrade_backup || say 'WARN: 临时升级副本未能清理'
   say '待配置后端升级完成；保持 Mihomo 停止，不设置开机自启。'
   exit 0
 fi
 
 if [ "${1:-}" = '--stage-only' ]; then
-  say '已按 stage-only 模式保留当前进程。下次重启 Mihomo 时启用 RC2.2.1 脚本。'
+  discard_upgrade_backup || say 'WARN: 临时升级副本未能清理'
+  say '已按 stage-only 模式保留当前进程。下次重启 Mihomo 时启用 RC2.3 脚本。'
   exit 0
 fi
 
@@ -186,7 +196,7 @@ say '== 首次双栈重启与健康检查 =='
 if OUTPUT=$(sh "$SCRIPTS/ufi-backend.sh" restart 2>&1); then
   say "$OUTPUT"
   say '升级成功：IPv4 与 IPv6 TProxy 健康检查均已通过。'
-  say "如需手动回退：sh $D/rollback-last.sh"
+  discard_upgrade_backup || say 'WARN: 临时升级副本未能清理'
   exit 0
 fi
 
@@ -198,7 +208,7 @@ restore_files || die "恢复旧脚本失败；请从 $BACKUP_DIR 手动恢复"
 BACKUP_READY=0
 
 if sh "$SCRIPTS/start.sh"; then
-  say '已自动恢复升级前脚本与运行状态。2.6-RC2.2.1 未生效。' >&2
+  say '已自动恢复升级前脚本与运行状态。2.6-RC2.3 未生效。' >&2
 else
   say "ERROR: 旧版脚本已恢复，但重新启动失败。备份位于 $BACKUP_DIR" >&2
 fi

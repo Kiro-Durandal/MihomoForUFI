@@ -26,7 +26,7 @@ fi
 
 {
   echo ""
-  echo "===== F50 Mihomo dual-stack boot start ====="
+  echo "===== Mihomo dual-stack boot start ====="
   echo "Start time: $(date)"
 
   # Wait for Android boot completion, at most about three minutes.

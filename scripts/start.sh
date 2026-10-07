@@ -5,6 +5,12 @@ set -u
 D=$(dirname "$0")
 . "$D/env.sh"
 
+case "${1:-}" in
+  '') CONFIG_VALIDATED=0 ;;
+  --validated-config) CONFIG_VALIDATED=1 ;;
+  *) echo "Unknown start option: $1" >&2; exit 1 ;;
+esac
+
 valid_pid() {
   case "${1:-}" in
     ''|*[!0-9]*) return 1 ;;
@@ -34,6 +40,14 @@ find_existing_mihomo() {
     fi
   done
   return 1
+}
+
+listeners_ready() {
+  SOCKETS=$(ss -lntu 2>/dev/null || true)
+  printf '%s\n' "$SOCKETS" | grep '^tcp' | grep -q ":$TPROXY_PORT[[:space:]]" || return 1
+  printf '%s\n' "$SOCKETS" | grep '^udp' | grep -q ":$TPROXY_PORT[[:space:]]" || return 1
+  printf '%s\n' "$SOCKETS" | grep '^tcp' | grep -q ":$DNS_PORT[[:space:]]" || return 1
+  printf '%s\n' "$SOCKETS" | grep '^udp' | grep -q ":$DNS_PORT[[:space:]]" || return 1
 }
 
 trim_log_before_start() {
@@ -78,17 +92,30 @@ if [ -n "$P" ]; then
   exit 0
 fi
 
-"$BIN" -t -d "$BASE" -f "$CFG" || exit 1
+if [ "$CONFIG_VALIDATED" -eq 0 ]; then
+  "$BIN" -t -d "$BASE" -f "$CFG" || exit 1
+fi
 trim_log_before_start || { echo "Failed to trim oversized Mihomo log" >&2; exit 1; }
 
 nohup "$BIN" -d "$BASE" -f "$CFG" </dev/null >>"$LOG" 2>&1 &
 P=$!
 printf '%s\n' "$P" > "$PIDFILE"
-sleep 5
+READY=0
+WAIT_TRY=0
+while [ "$WAIT_TRY" -lt 30 ]; do
+  sleep 1
+  if ! is_our_mihomo "$P"; then break; fi
+  if listeners_ready; then READY=1; break; fi
+  WAIT_TRY=$((WAIT_TRY + 1))
+done
 
-if ! is_our_mihomo "$P"; then
+if [ "$READY" -ne 1 ]; then
   tail -n 80 "$LOG" 2>/dev/null || true
+  if is_our_mihomo "$P"; then
+    kill "$P" 2>/dev/null || true
+  fi
   rm -f "$PIDFILE"
+  echo 'Mihomo did not expose the TProxy and DNS listeners within 30 seconds.' >&2
   exit 1
 fi
 

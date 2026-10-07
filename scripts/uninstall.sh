@@ -1,6 +1,6 @@
 #!/system/bin/sh
 
-# Irreversible F50 Mihomo backend removal. This intentionally keeps the
+# Irreversible Mihomo backend removal. This intentionally keeps the
 # UFI-Tools front-end registration and downloaded release package untouched.
 
 set -u
@@ -40,7 +40,7 @@ cleanup() {
 
 [ "$(id -u 2>/dev/null)" = '0' ] || die '请在 UFI-Tools TTYD 的 Root 环境执行'
 [ "$BASE" = '/data/f50-mihomo' ] || die '拒绝卸载：后端目录不是预期的绝对路径'
-[ -d "$BASE" ] || die '未找到 F50 Mihomo 后端目录'
+[ -d "$BASE" ] || die '未找到 Mihomo 后端目录'
 [ ! -L "$BASE" ] || die '拒绝卸载符号链接目录'
 [ -f "$BASE/scripts/stop.sh" ] || die '缺少 stop.sh，无法安全清理代理规则'
 [ -f "$BASE/scripts/firewall-stop.sh" ] || die '缺少 firewall-stop.sh，无法安全清理代理规则'
@@ -118,5 +118,5 @@ for OLD_HELPER in /data/local/tmp/f50-mihomo-uninstall.[0-9]*.sh; do
   [ -f "$OLD_HELPER" ] || continue
   [ "$OLD_HELPER" = "$0" ] || rm -f "$OLD_HELPER" 2>/dev/null || true
 done
-say 'OK: F50 Mihomo 后端、配置、节点缓存、日志、备份和双栈规则已永久删除。'
+say 'OK: Mihomo 后端、配置、节点缓存、日志、备份和双栈规则已永久删除。'
 say '请在 UFI-Tools 脚本管理中手动删除 RC2 前端 JS。'

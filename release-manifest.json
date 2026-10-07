@@ -1,20 +1,27 @@
 {
   "schema": 1,
-  "version": "2.6-RC2.2.1",
+  "version": "2.6-RC2.3",
   "published": true,
   "package": {
-    "name": "F50-Mihomo-UFI-Device-Manager-Beta2.6-RC2.2.1-arm64.tar",
-    "root_dir": "F50-Mihomo-UFI-Device-Manager-Beta2.6-RC2.2.1",
-    "url": "https://github.com/Kiro-Durandal/MihomoForUFI/releases/download/v2.6-rc2.2.1/F50-Mihomo-UFI-Device-Manager-Beta2.6-RC2.2.1-arm64.tar",
-    "sha256": "61c3fa1a4df4cb78bf5ec568901553a220031f6f751f90098c319cde58476a56",
-    "bytes": 64102400
+    "name": "Mihomo-UFI-Device-Manager-Beta2.6-RC2.3-arm64.tar",
+    "root_dir": "Mihomo-UFI-Device-Manager-Beta2.6-RC2.3",
+    "url": "https://github.com/Kiro-Durandal/MihomoForUFI/releases/download/v2.6-rc2.3/Mihomo-UFI-Device-Manager-Beta2.6-RC2.3-arm64.tar",
+    "sha256": "304d2dd371d08d8418d8b6cf1af22ef39f18330326918b7d010e94aed781d541",
+    "bytes": 22515200
+  },
+  "upgrade_package": {
+    "name": "Mihomo-UFI-Device-Manager-Beta2.6-RC2.3-upgrade.tar",
+    "root_dir": "Mihomo-UFI-Device-Manager-Beta2.6-RC2.3",
+    "url": "https://github.com/Kiro-Durandal/MihomoForUFI/releases/download/v2.6-rc2.3/Mihomo-UFI-Device-Manager-Beta2.6-RC2.3-upgrade.tar",
+    "sha256": "b8261990115fce8467f4cdc5d4f01dd3059e73c4b3ab8b54377dd22c634b5316",
+    "bytes": 201728
   },
   "third_party_source": {
     "component": "MetaCubeX/mihomo",
     "version": "v1.19.31",
     "license": "GPL-3.0-only",
     "name": "mihomo-v1.19.31-source.tar.gz",
-    "url": "https://github.com/Kiro-Durandal/MihomoForUFI/releases/download/v2.6-rc2.2.1/mihomo-v1.19.31-source.tar.gz",
+    "url": "https://github.com/Kiro-Durandal/MihomoForUFI/releases/download/v2.6-rc2.3/mihomo-v1.19.31-source.tar.gz",
     "upstream": "https://github.com/MetaCubeX/mihomo/tree/v1.19.31",
     "sha256": "5a04aa9cf4520e06fa1c13d37b6aca49209479690722d485c40034ab17f8581f",
     "bytes": 1263209

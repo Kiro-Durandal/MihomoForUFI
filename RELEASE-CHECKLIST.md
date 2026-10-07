@@ -1,67 +1,38 @@
-# RC2.2.1 release checklist
+# RC2.3 验收与发布清单
 
-## Configuration review
+## 本地
 
-- [x] Change the three requested DoH groups to `dns.alidns.com` and `doh.pub`; keep bootstrap IP resolvers.
-- [x] Confirm `ipv6: true`, `dns.ipv6: true` and `fake-ip-range6`.
-- [x] Confirm `ChinaIpv6` is placed before the final catch-all rule and targets `DIRECT`.
-- [x] Confirm there is no dedicated IPv6 proxy group or forced alternate node.
-- [x] Confirm “其他 - 手动选择” is defined once, excludes the five named regions, and is referenced by the five intended application groups.
-- [x] Confirm the template contains no personal subscription, node, hostname, IP, UUID, password, private key or user-specific controller secret.
-- [x] Keep only `__SUBSCRIPTION_URL__` as a pending local setup marker; never publish a personal subscription URL.
-- [x] Set the clean-install template to `0.0.0.0:9099` and document the requested public default secret risk without changing upgraded configurations.
-- [x] Reject inline proxy nodes, node credential fields, proxy share links, extra controller secrets and credential-bearing URLs during release construction.
+- [x] 前端和所有 shell 语法检查。
+- [x] 完整 JS 初始化：MiCatty 按钮、延迟 DOM、残留面板重建、面板错误隔离、点击与重复加载。
+- [x] 配置修改、IP/端口校验、CRLF 与 MiConfig 时间命名测试。
+- [x] 配置编辑取消/未改动/保存、控制器取消/保存测试。
+- [x] 本地真实浏览器 DOM：桌面/手机外层顶部取消/保存、滚动可见性、退出恢复管理窗口、控制器/订阅反复打开且入口不丢失。
+- [x] 实际 Shell 文件事务：精确字节、配置链接切换、同分钟保存、不积累副本、乐观冲突、失败恢复。
+- [x] 热加载不执行 stop/start、不重复 CLI 解析；边界变化重启，API 缺失回退。
+- [x] 订阅强制刷新与 URL 变化刷新、节点反馈以及刷新失败恢复。
+- [x] UFI success:true 下的真实退出码失败及下载重试。
+- [x] 完整包、脚本包、所有资产 SHA-256、运行时来源与基础凭据扫描。
 
-## Runtime provenance
+## 统一实机测试
 
-- [x] Pin the official Android arm64 Mihomo `v1.19.31` release.
-- [x] Record its upstream URL, version, compressed checksum and decompressed checksum outside the binary.
-- [x] Put the verified ELF64 AArch64 executable at `runtime/mihomo` only for release construction.
-- [x] Include the upstream GPL-3.0 license and corresponding-source link with the runtime payload.
-- [x] Pin and validate the exact `v1.19.31` source archive as a separate release companion asset.
-- [ ] Review optional UI, Geo data and provider seed sources.
+- [ ] 移除旧 JS 后导入新 JS，界面仅有保留/新增按钮。
+- [ ] 已安装设备选择清单+脚本升级包；升级前后原配置字节不变。
+- [ ] 全新安装选择清单+完整包，待配置状态不提前启动；填写订阅后节点数反馈正确。
+- [ ] 编辑取消不写入；保存 DNS 后下载确为新值且命名正确。
+- [ ] 实机编辑窗口顶部只有取消/保存，滚动可见；控制器与订阅入口可反复打开，不消失。
+- [ ] 普通 DNS/规则编辑走热加载；实际 IPv4/IPv6/DNS 可用，所选节点行为未改变。
+- [ ] 更换订阅后 main 从新链接拉取，不把旧缓存当新订阅。
+- [ ] 修改控制器 IPv4/IPv6 IP 与端口，密钥不变；不可用地址/冲突端口报错并恢复。
+- [ ] 连续保存与故障恢复后只保留当前配置，上传与临时副本不累积。
+- [ ] 停止后点击重启能启动；开机自启、重启设备、日志、MetaCubeXD 面板和彻底卸载正常。
+- [ ] 记录普通配置编辑和首次安装实际耗时；未测量前不承诺具体加速秒数。
 
-## Installer verification
+## 发布
 
-- [x] Run local front-end config-edit tests for CRLF template, legacy port migration, and main provider node count.
-- [x] Run local device-side release-fetch tests for three direct attempts, optional proxy fallback, command length and cleanup; use the device-tested RC2.2 hotfix as the RC2.2.1 front-end basis.
-- [ ] Test a clean F50 installation with no `/data/f50-mihomo` directory: backend installed, configured=0, core stopped, no TProxy or boot entry.
-- [ ] Fill the HTTPS subscription in the front end: config validates, core starts, dual-stack health passes, configured=1, boot entry enabled.
-- [ ] Verify the subscription dialog keeps progress visible and reports the `main` provider node count without exposing node names or credentials.
-- [ ] Verify zero nodes, an unreachable controller, and a failed config apply show distinct persistent warnings.
-- [ ] Confirm clean install binds the Mihomo API and MetaCubeXD at 9099, not another process on that port.
-- [ ] Upgrade an existing 9090 installation without changing config, then explicitly migrate to 9099; verify backup, API, XD and rollback on failure.
-- [ ] Upgrade an RC2.1 backend that still has `setup-pending`: preserve its config and stopped state, then fill the subscription and confirm the legacy default port becomes 9099.
-- [ ] Compare the MetaCubeXD row with UFI-Tools native `title`/`btn` styling on the device.
-- [ ] Test failed first subscription: pending config remains, no boot entry is added, and retry succeeds.
-- [ ] Test RC1/RC2/RC2.1 to RC2.2.1 upgrade with a non-9099 controller port; verify `config.yaml` SHA-256 and bytes are unchanged before the explicit migration action.
-- [ ] Test `rollback-last.sh` restores the pre-upgrade scripts while leaving `config.yaml` SHA-256 and bytes unchanged.
-- [ ] Test destructive uninstall removes the process, IPv4/IPv6 rules, boot entry, `/data/f50-mihomo`, failed/staging leftovers and boot log.
-- [ ] Confirm uninstall does not remove the UFI-Tools front-end registration or files under `/sdcard/Download`.
-- [ ] Test invalid CLI `--config`: the formal directory must remain untouched.
-- [ ] Test corrupted release package: checksum must fail before extraction.
-- [ ] After publication, test device-side GitHub download and checksum; verify local package fallback when the device cannot reach GitHub.
-- [ ] Test failed first start with CLI subscription: firewall rules are removed and failure state is preserved.
-- [ ] Test reboot: IPv4 and IPv6 rules return automatically.
-- [ ] Test installation without carrier IPv6: IPv4 must still start after boot timeout.
+- [x] 2026-10-07 用户确认本迭代可用、目前未见错误并授权发布；未逐项报告的实机测试不自动勾选。
+- [ ] Actions 发布前检查准确 Git tree；六个配套资产属于同一不可变版本。
+- [ ] GitHub 在线选择脚本包升级及完整包初装验证。
 
-## Network behavior
+## 可选浏览器测试
 
-- [ ] Domestic IPv4 is direct according to the reviewed rules.
-- [ ] Domestic IPv6 is direct according to `ChinaIpv6`.
-- [ ] Foreign IPv4 uses the selected normal policy.
-- [ ] A dual-stack foreign site remains usable with an IPv4-only selected node.
-- [ ] No automatic node switch occurs for foreign IPv6.
-- [ ] Document that foreign IPv6-only targets may fail on IPv4-only nodes.
-
-## Publication
-
-- [x] Add the user-selected MIT license for original project files and document that it does not relicense Mihomo.
-- [x] Pin `OWNER/REPOSITORY` to `Kiro-Durandal/MihomoForUFI` and the proposed release tag to `v2.6-rc2.2.1`.
-- [ ] Confirm the repository, immutable `v2.6-rc2.2.1` tag and Release are anonymously readable after publication.
-- [x] Locally build the `.tar`, then verify its byte size and SHA-256 against the manifest; device verification is still pending.
-- [x] Add a release workflow that pins upstream downloads and refuses an existing RC2.2.1 tag.
-- [x] Confirm the build script set `INSTALL_MANIFEST_URL` to the intended immutable raw manifest URL.
-- [x] Re-run source and artifact credential scans; the template contains only the public placeholder and documented initial controller secret.
-- [x] Review the exact Git tree before push; retain old versioned JS/workflows for prior releases and add the RC2.2.1 files.
-- [ ] Publish the JS, manifest, installer `.tar`, `mihomo-v1.19.31-source.tar.gz` and `SHA256SUMS.release.txt` as the same release version.
+tools/test-ui-dom.js 需可用的 Playwright 和浏览器，以及已核对的 UFI utils.js。通过 MI_TEST_PLAYWRIGHT_MODULE、MI_TEST_BROWSER_PATH、MI_TEST_UFI_UTILS 指定本地路径，再用 Node 执行；MI_TEST_SCREENSHOT_DIR 可指定已有截图目录。页面不连接设备、禁止真实网络请求，不使用个人浏览器会话。

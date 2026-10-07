@@ -9,21 +9,22 @@ param(
 
     [Parameter(Mandatory = $false)]
     [ValidatePattern('^v[A-Za-z0-9._-]+$')]
-    [string]$Tag = 'v2.6-rc2.2.1'
+    [string]$Tag = 'v2.6-rc2.3'
 )
 
 $ErrorActionPreference = 'Stop'
 $sourceRoot = [IO.Path]::GetFullPath((Split-Path -Parent $PSScriptRoot))
-$rootName = 'F50-Mihomo-UFI-Device-Manager-Beta2.6-RC2.2.1'
+$rootName = 'Mihomo-UFI-Device-Manager-Beta2.6-RC2.3'
 $assetName = "$rootName-arm64.tar"
+$upgradeAssetName = "$rootName-upgrade.tar"
 $dist = [IO.Path]::GetFullPath((Join-Path $sourceRoot 'dist'))
 $work = [IO.Path]::GetFullPath((Join-Path $sourceRoot '.release-work'))
 $payload = Join-Path $work $rootName
 $manifestUrl = "https://raw.githubusercontent.com/$Owner/$Repository/$Tag/release-manifest.json"
 $gitMetadataPrefix = [IO.Path]::GetFullPath((Join-Path $sourceRoot '.git')) + [IO.Path]::DirectorySeparatorChar
 
-if ($Tag -ne 'v2.6-rc2.2.1') {
-    throw 'This RC2.2.1 source only accepts the immutable tag v2.6-rc2.2.1.'
+if ($Tag -ne 'v2.6-rc2.3') {
+    throw 'This RC2.3 source only accepts the immutable tag v2.6-rc2.3.'
 }
 if ($Owner -cne 'Kiro-Durandal' -or $Repository -cne 'MihomoForUFI') {
     throw 'This RC2 source is pinned to Kiro-Durandal/MihomoForUFI.'
@@ -132,7 +133,7 @@ if ($templateText -match '(?mi)^\s+(?:server|server-port|uuid|password|private-k
     throw 'config.template.yaml contains a node address or credential field.'
 }
 
-$jsPath = Join-Path $sourceRoot 'f50-mihomo-ufi-device-manager-beta2.6-rc2.2.1.js'
+$jsPath = Join-Path $sourceRoot 'mihomo-ufi-device-manager-beta2.6-rc2.3.js'
 $jsText = Get-Content -LiteralPath $jsPath -Raw
 if ($jsText.Contains('__GITHUB_RAW_RELEASE_MANIFEST_URL__')) {
     $jsText = $jsText.Replace('__GITHUB_RAW_RELEASE_MANIFEST_URL__', $manifestUrl)
@@ -181,9 +182,8 @@ $payloadItems = @(
     'THIRD_PARTY_NOTICES.md',
     'install.sh',
     'install-upgrade.sh',
-    'rollback-last.sh',
     'ufi-backend.sh',
-    'f50-mihomo-ufi-device-manager-beta2.6-rc2.2.1.js',
+    'mihomo-ufi-device-manager-beta2.6-rc2.3.js',
     'config',
     'runtime',
     'scripts'
@@ -195,6 +195,41 @@ $payloadSourceArchivePath = Join-Path $payload 'runtime\mihomo-v1.19.31-source.t
 if (Test-Path -LiteralPath $payloadSourceArchivePath -PathType Leaf) {
     Remove-Item -LiteralPath $payloadSourceArchivePath -Force
 }
+$payloadBinaryPath = Join-Path $payload 'runtime\mihomo'
+$payloadGzipPath = Join-Path $payload 'runtime\mihomo.gz'
+$inputStream = [IO.File]::OpenRead($payloadBinaryPath)
+$outputStream = [IO.File]::Create($payloadGzipPath)
+try {
+    $compressor = [IO.Compression.GZipStream]::new($outputStream, [IO.Compression.CompressionLevel]::Optimal, $true)
+    try {
+        $inputStream.CopyTo($compressor)
+    } finally {
+        $compressor.Dispose()
+    }
+} finally {
+    $inputStream.Dispose()
+    $outputStream.Dispose()
+}
+$compressedStream = [IO.File]::OpenRead($payloadGzipPath)
+try {
+    $decompressor = [IO.Compression.GZipStream]::new($compressedStream, [IO.Compression.CompressionMode]::Decompress)
+    try {
+        $hasher = [Security.Cryptography.SHA256]::Create()
+        try {
+            $unpackedHash = [Convert]::ToHexString($hasher.ComputeHash($decompressor)).ToLowerInvariant()
+        } finally {
+            $hasher.Dispose()
+        }
+    } finally {
+        $decompressor.Dispose()
+    }
+} finally {
+    $compressedStream.Dispose()
+}
+if ($unpackedHash -ne $expectedRuntimeSha256) {
+    throw 'The packaged gzip does not restore the pinned Mihomo binary.'
+}
+Remove-Item -LiteralPath $payloadBinaryPath -Force
 
 $hashLines = Get-ChildItem -LiteralPath $payload -Recurse -File |
     Where-Object Name -ne 'SHA256SUMS.txt' |
@@ -218,12 +253,34 @@ try {
 $assetInfo = Get-Item -LiteralPath $asset
 $assetHash = (Get-FileHash -LiteralPath $asset -Algorithm SHA256).Hash.ToLowerInvariant()
 $assetUrl = "https://github.com/$Owner/$Repository/releases/download/$Tag/$assetName"
+# Existing installs already have the core: publish a script-only upgrade too.
+$upgradeParent = Join-Path $work 'upgrade'
+$upgradePayload = Join-Path $upgradeParent $rootName
+New-Item -ItemType Directory -Path $upgradePayload -Force | Out-Null
+foreach ($item in ($payloadItems | Where-Object { $_ -ne 'runtime' })) {
+    Copy-Item -LiteralPath (Join-Path $sourceRoot $item) -Destination $upgradePayload -Recurse
+}
+$upgradeHashLines = Get-ChildItem -LiteralPath $upgradePayload -Recurse -File |
+    Sort-Object FullName | ForEach-Object {
+        $relative = [IO.Path]::GetRelativePath($upgradePayload, $_.FullName).Replace('\', '/')
+        $hash = (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+        "$hash  $relative"
+    }
+[IO.File]::WriteAllText((Join-Path $upgradePayload 'SHA256SUMS.txt'),
+    ([string]::Join("`n", $upgradeHashLines) + "`n"), [Text.UTF8Encoding]::new($false))
+$upgradeAsset = Join-Path $dist $upgradeAssetName
+Push-Location $upgradeParent
+try {
+    & tar -cf $upgradeAsset $rootName
+    if ($LASTEXITCODE -ne 0) { throw 'upgrade tar failed.' }
+} finally { Pop-Location }
+$upgradeHash = (Get-FileHash -LiteralPath $upgradeAsset -Algorithm SHA256).Hash.ToLowerInvariant()
 $runtimeSourceAssetPath = Join-Path $dist $runtimeSourceAssetName
 Copy-Item -LiteralPath $runtimeSourceArchivePath -Destination $runtimeSourceAssetPath
 $runtimeSourceUrl = "https://github.com/$Owner/$Repository/releases/download/$Tag/$runtimeSourceAssetName"
 $manifest = [ordered]@{
     schema = 1
-    version = '2.6-RC2.2.1'
+    version = '2.6-RC2.3'
     published = $true
     package = [ordered]@{
         name = $assetName
@@ -231,6 +288,13 @@ $manifest = [ordered]@{
         url = $assetUrl
         sha256 = $assetHash
         bytes = $assetInfo.Length
+    }
+    upgrade_package = [ordered]@{
+        name = $upgradeAssetName
+        root_dir = $rootName
+        url = "https://github.com/$Owner/$Repository/releases/download/$Tag/$upgradeAssetName"
+        sha256 = $upgradeHash
+        bytes = (Get-Item -LiteralPath $upgradeAsset).Length
     }
     third_party_source = [ordered]@{
         component = 'MetaCubeX/mihomo'
@@ -287,6 +351,7 @@ $sourceHashLines = Get-ChildItem -LiteralPath $sourceRoot -Recurse -Force -File 
 )
 
 Write-Host "Built: $asset"
+Write-Host "Script-only upgrade: $upgradeAsset"
 Write-Host "Manifest: $manifestPath"
 Write-Host "UFI-Tools front end: $jsAssetPath"
 Write-Host "Release checksums: $releaseChecksumPath"

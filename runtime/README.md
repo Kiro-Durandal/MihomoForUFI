@@ -9,8 +9,9 @@ runtime/mihomo
 Its exact version, upstream URLs, compressed/decompressed SHA-256 values and
 ELF architecture are recorded in `MIHOMO-PROVENANCE.md`. The upstream GPL-3.0
 license is stored as `LICENSE.mihomo`. Both metadata files belong in source
-control; the 64 MB executable remains Git-ignored and is injected into the
-release archive by the local build process.
+control; the 64 MB executable remains Git-ignored. The local build process
+verifies it, then places a gzip-compressed copy in the installer `.tar`. The
+installer expands it back to the verified executable before running it.
 
 `mihomo-v1.19.31-source.tar.gz` is the exact upstream tag archive. It is also
 Git-ignored, verified by the build script, and copied to `dist/` as a separate

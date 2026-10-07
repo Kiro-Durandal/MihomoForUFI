@@ -1,4 +1,4 @@
-name: Publish RC2.2.1
+name: Publish RC2.3
 
 on:
   workflow_dispatch:
@@ -6,22 +6,22 @@ on:
     branches:
       - main
     paths:
-      - .github/workflows/release-rc2.2.1.yml
+      - .github/workflows/release-rc2.3.yml
 
 permissions:
   contents: write
 
 concurrency:
-  group: publish-v2.6-rc2.2.1
+  group: publish-v2.6-rc2.3
   cancel-in-progress: false
 
 jobs:
   publish:
-    name: Build, tag and publish RC2.2.1
+    name: Build, tag and publish RC2.3
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
-      RELEASE_TAG: v2.6-rc2.2.1
+      RELEASE_TAG: v2.6-rc2.3
       MIHOMO_GZ_SHA256: de00bc53ed151636ca078c812a82a5315687d8d52164db230f1935b2a37904f6
       MIHOMO_SOURCE_SHA256: 5a04aa9cf4520e06fa1c13d37b6aca49209479690722d485c40034ab17f8581f
 
@@ -63,9 +63,13 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          node --check f50-mihomo-ufi-device-manager-beta2.6-rc2.2.1.js
+          node --check mihomo-ufi-device-manager-beta2.6-rc2.3.js
           node tools/test-config-edit.js
           node tools/test-release-fetch.js
+          node tools/test-provider-refresh.js
+          node tools/test-config-transaction.js
+          node tools/test-config-dialogs.js
+          node tools/test-frontend-startup.js
           while IFS= read -r -d '' script; do
             bash -n "${script}"
           done < <(find . -path './.git' -prune -o -name '*.sh' -type f -print0)
@@ -80,13 +84,16 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          asset='dist/F50-Mihomo-UFI-Device-Manager-Beta2.6-RC2.2.1-arm64.tar'
+          asset='dist/Mihomo-UFI-Device-Manager-Beta2.6-RC2.3-arm64.tar'
           manifest='dist/release-manifest.json'
           source_asset='dist/mihomo-v1.19.31-source.tar.gz'
+          upgrade_asset='dist/Mihomo-UFI-Device-Manager-Beta2.6-RC2.3-upgrade.tar'
 
           test "$(jq -r '.published' "${manifest}")" = 'true'
           test "$(jq -r '.package.sha256' "${manifest}")" = "$(sha256sum "${asset}" | cut -d ' ' -f 1)"
           test "$(jq -r '.package.bytes' "${manifest}")" = "$(stat --format='%s' "${asset}")"
+          test "$(jq -r '.upgrade_package.sha256' "${manifest}")" = "$(sha256sum "${upgrade_asset}" | cut -d ' ' -f 1)"
+          test "$(jq -r '.upgrade_package.bytes' "${manifest}")" = "$(stat --format='%s' "${upgrade_asset}")"
           test "$(jq -r '.third_party_source.sha256' "${manifest}")" = "$(sha256sum "${source_asset}" | cut -d ' ' -f 1)"
           test "$(jq -r '.third_party_source.bytes' "${manifest}")" = "$(stat --format='%s' "${source_asset}")"
 
@@ -94,9 +101,16 @@ jobs:
 
           archive_entries="$(tar --list --file "${asset}")"
           grep --fixed-strings --line-regexp \
-            'F50-Mihomo-UFI-Device-Manager-Beta2.6-RC2.2.1/LICENSE' <<<"${archive_entries}"
+            'Mihomo-UFI-Device-Manager-Beta2.6-RC2.3/LICENSE' <<<"${archive_entries}"
           grep --fixed-strings --line-regexp \
-            'F50-Mihomo-UFI-Device-Manager-Beta2.6-RC2.2.1/THIRD_PARTY_NOTICES.md' <<<"${archive_entries}"
+            'Mihomo-UFI-Device-Manager-Beta2.6-RC2.3/THIRD_PARTY_NOTICES.md' <<<"${archive_entries}"
+          grep --fixed-strings --line-regexp \
+            'Mihomo-UFI-Device-Manager-Beta2.6-RC2.3/runtime/mihomo.gz' <<<"${archive_entries}"
+          if grep --fixed-strings --line-regexp \
+            'Mihomo-UFI-Device-Manager-Beta2.6-RC2.3/runtime/mihomo' <<<"${archive_entries}"; then
+            echo 'Uncompressed Mihomo binary must not be placed in the release package.' >&2
+            exit 1
+          fi
           if grep --fixed-strings 'mihomo-v1.19.31-source.tar.gz' <<<"${archive_entries}"; then
             echo 'The corresponding-source archive must remain a separate release asset.' >&2
             exit 1
@@ -114,9 +128,9 @@ jobs:
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add -- release-manifest.json SHA256SUMS.txt
           git diff --cached --check
-          git commit -m 'chore: finalize v2.6-rc2.2.1 release manifest'
+          git commit -m 'chore: finalize v2.6-rc2.3 release manifest'
           git push origin HEAD:main
-          git tag --annotate "${RELEASE_TAG}" --message 'F50 Mihomo UFI-Tools Beta 2.6-RC2.2.1'
+          git tag --annotate "${RELEASE_TAG}" --message 'Mihomo UFI-Tools Beta 2.6-RC2.3'
           git push origin "refs/tags/${RELEASE_TAG}"
 
       - name: Publish the GitHub prerelease
@@ -126,12 +140,14 @@ jobs:
         run: |
           set -euo pipefail
           gh release create "${RELEASE_TAG}" \
-            dist/f50-mihomo-ufi-device-manager-beta2.6-rc2.2.1.js \
+            dist/mihomo-ufi-device-manager-beta2.6-rc2.3.js \
             dist/release-manifest.json \
-            dist/F50-Mihomo-UFI-Device-Manager-Beta2.6-RC2.2.1-arm64.tar \
+            dist/Mihomo-UFI-Device-Manager-Beta2.6-RC2.3-arm64.tar \
+            dist/Mihomo-UFI-Device-Manager-Beta2.6-RC2.3-upgrade.tar \
             dist/mihomo-v1.19.31-source.tar.gz \
             dist/SHA256SUMS.release.txt \
             --verify-tag \
             --prerelease \
-            --title 'F50 Mihomo UFI-Tools Beta 2.6-RC2.2.1' \
+            --title 'MiCatty / Mihomo UFI-Tools Beta 2.6-RC2.3' \
+            --notes-file .github/RELEASE-NOTES-RC2.3.md \
             --generate-notes

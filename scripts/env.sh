@@ -1,6 +1,6 @@
 #!/system/bin/sh
 
-# Shared F50 Mihomo runtime settings.
+# Shared Mihomo runtime settings.
 BASE=/data/f50-mihomo
 BIN=$BASE/bin/mihomo
 CFG=$BASE/config/config.yaml

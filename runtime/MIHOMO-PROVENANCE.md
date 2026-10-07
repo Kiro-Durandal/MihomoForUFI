@@ -1,8 +1,9 @@
 # Mihomo runtime provenance
 
 The RC2 release payload is pinned to the following unmodified upstream binary.
-The only transformation performed locally was gzip decompression and renaming
-the resulting executable to `runtime/mihomo`.
+The upstream gzip is decompressed to `runtime/mihomo` for verification and
+recompressed as `runtime/mihomo.gz` inside the installer to reduce transfer
+size. Installation restores the same verified executable bytes.
 
 - Project: MetaCubeX/mihomo
 - Version/tag: `v1.19.31`

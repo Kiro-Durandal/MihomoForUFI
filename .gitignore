@@ -3,6 +3,9 @@
 
 config.yaml
 config/config.yaml
+config/MiConfig-*.yaml
+config/.MiConfig-*
+config/.current.*
 providers/
 backups/
 logs/
@@ -26,6 +29,7 @@ f50-ipv6-*.txt
 *.zip
 dist/
 .release-work/
+.test-config-transaction-*/
 
 *private*
 *私人*

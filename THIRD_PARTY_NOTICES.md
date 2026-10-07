@@ -1,6 +1,6 @@
 # Third-party notices
 
-The original F50 Mihomo UFI-Tools manager code and documentation in this
+The original Mihomo UFI-Tools manager code and documentation in this
 repository are licensed under the MIT License in the repository root.
 
 Release packages also contain the following independent third-party program:

@@ -1,4 +1,4 @@
-# F50 Mihomo Beta 2.6-RC2.2.1 公共安装模板
+# Mihomo Beta 2.6-RC2.3 公共安装模板
 # 后端可先安装，随后由设备管理窗口替换主订阅占位符并启用 Mihomo。
 # 请勿把安装后生成的 config.yaml 上传到公开仓库。
 # external-controller 对局域网开放，初始密钥按发布要求设为 123456；安装后建议尽快改成长随机值。
