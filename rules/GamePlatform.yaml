@@ -1,0 +1,235 @@
+# 游戏平台 · Mihomo rule provider
+# 版本 0.1.1 · 2026-11-21
+# 用法：behavior: classical / format: yaml。由主配置绑定代理策略。
+# Steam 条目覆盖商店、购物车、结账、登录、社区直播及相关网页资源。
+# 主配置须优先匹配 Steam 下载直连和国服直连。接入顺序见仓库 PR。
+# 只按 F50 可见的目标域名匹配。只有 IP 的对局需另外用实机日志验证。
+# 部分登录服务由同一发行商的多款游戏共用。
+#
+# 主要来源
+# https://github.com/v2fly/domain-list-community/tree/9c1420eb3dffce67d2d8e9cbe1f9026ae0d949b6/data
+# https://store.steampowered.com/cart/
+# https://partner.steamgames.com/doc/features/inventory/webfunctions
+# https://help.steampowered.com/en/faqs/view/5ac5-8056-e88f-f3ff
+# https://www.epicgames.com/help/c-36624475/a15422130
+# https://help.ea.com/en/articles/ea-account/ea-account-linking/
+# https://www.dogfight360.com/blog/1213/
+# https://learn.microsoft.com/en-us/gaming/gdk/docs/services/multiplayer/mpsd/live-xbox-multiplayer-session-directory
+# https://support.pubg.com/hc/en-us/articles/11494953868953
+#
+# MIT License
+#
+# Copyright (c) 2018-2019 V2Ray
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+
+payload:
+  # Steam 商店、结账、登录、社区和直播
+  - DOMAIN,store.steampowered.com
+  - DOMAIN,checkout.steampowered.com
+  - DOMAIN,login.steampowered.com
+  - DOMAIN,help.steampowered.com
+  - DOMAIN,store.akamai.steamstatic.com
+  - DOMAIN,store.fastly.steamstatic.com
+  - DOMAIN,shared.akamai.steamstatic.com
+  - DOMAIN,shared.fastly.steamstatic.com
+  - DOMAIN,community.akamai.steamstatic.com
+  - DOMAIN,community.fastly.steamstatic.com
+  - DOMAIN,avatars.steamstatic.com
+  - DOMAIN,avatars.akamai.steamstatic.com
+  - DOMAIN,avatars.fastly.steamstatic.com
+  - DOMAIN,steamstore-a.akamaihd.net
+  - DOMAIN,steamcommunity-a.akamaihd.net
+  - DOMAIN,steamcommunity-a.akamaihd.net.edgesuite.net
+  - DOMAIN,steamuserimages-a.akamaihd.net
+  - DOMAIN,steambroadcast.akamaized.net
+  - DOMAIN-SUFFIX,steamcommunity.com
+  - DOMAIN-SUFFIX,steam-chat.com
+
+  # Epic Games Store、启动器和 Fortnite 在线服务
+  - DOMAIN,epicgames.com
+  - DOMAIN,www.epicgames.com
+  - DOMAIN,store.epicgames.com
+  - DOMAIN,accounts.epicgames.com
+  - DOMAIN,account-public-service-prod03.ol.epicgames.com
+  - DOMAIN,accountportal-website-prod07.ol.epicgames.com
+  - DOMAIN,accounts.launcher-website-prod07.ol.epicgames.com
+  - DOMAIN,launcherwaitingroom-public-service-prod06.ol.epicgames.com
+  - DOMAIN,launcher-public-service-prod06.ol.epicgames.com
+  - DOMAIN,launcher-website-prod07.ol.epicgames.com
+  - DOMAIN,catalog-public-service-prod06.ol.epicgames.com
+  - DOMAIN,entitlement-public-service-prod08.ol.epicgames.com
+  - DOMAIN,orderprocessor-public-service-ecomprod01.ol.epicgames.com
+  - DOMAIN,friends-public-service-prod06.ol.epicgames.com
+  - DOMAIN,lightswitch-public-service-prod06.ol.epicgames.com
+  - DOMAIN,eulatracking-public-service-prod.ol.epicgames.com
+  - DOMAIN,static-assets-prod.epicgames.com
+  - DOMAIN,store-content.ak.epicgames.com
+  - DOMAIN,store-site-backend-static.ak.epicgames.com
+  - DOMAIN,library-service.live.use1a.on.epicgames.com
+  - DOMAIN,datastorage-public-service-liveegs.live.use1a.on.epicgames.com
+  - DOMAIN,fortnite-public-service-prod11.ol.epicgames.com
+  - DOMAIN-SUFFIX,fortnite.com
+
+  # EA app、EA 账号和 Apex Legends 在线服务
+  - DOMAIN,accounts.ea.com
+  - DOMAIN,gateway.ea.com
+  - DOMAIN,myaccount.ea.com
+  - DOMAIN,signin.ea.com
+  - DOMAIN,www.ea.com
+  - DOMAIN,www.origin.com
+  - DOMAIN,api1.origin.com
+  - DOMAIN,desktop-config.juno.ea.com
+  - DOMAIN,friends.gs.ea.com
+  - DOMAIN,rtm.tnt-ea.com
+  - DOMAIN,r5-pc-plb.stryder.respawn.com
+  - DOMAIN-SUFFIX,r5prod.stryder.respawn.com
+
+  # Battle.net 国际服、暴雪游戏和 Call of Duty
+  - DOMAIN,battle.net
+  - DOMAIN,www.battle.net
+  - DOMAIN,shop.battle.net
+  - DOMAIN,account.battle.net
+  - DOMAIN,oauth.battle.net
+  - DOMAIN,us.battle.net
+  - DOMAIN,eu.battle.net
+  - DOMAIN,kr.battle.net
+  - DOMAIN,tw.battle.net
+  - DOMAIN,us.auth.battle.net
+  - DOMAIN,eu.auth.battle.net
+  - DOMAIN,kr.auth.battle.net
+  - DOMAIN,tw.auth.battle.net
+  - DOMAIN,us.actual.battle.net
+  - DOMAIN,eu.actual.battle.net
+  - DOMAIN,kr.actual.battle.net
+  - DOMAIN,tw.actual.battle.net
+  - DOMAIN-SUFFIX,us.account.battle.net
+  - DOMAIN-SUFFIX,eu.account.battle.net
+  - DOMAIN-SUFFIX,kr.account.battle.net
+  - DOMAIN-SUFFIX,tw.account.battle.net
+  - DOMAIN-SUFFIX,callofduty.com
+  - DOMAIN-SUFFIX,demonware.net
+  - DOMAIN-SUFFIX,diablo4.com
+  - DOMAIN-SUFFIX,playhearthstone.com
+  - DOMAIN-SUFFIX,playoverwatch.com
+  - DOMAIN-SUFFIX,worldofwarcraft.com
+
+  # Riot 国际服登录、英雄联盟与 VALORANT
+  - DOMAIN,www.riotgames.com
+  - DOMAIN,account.riotgames.com
+  - DOMAIN,authenticate.riotgames.com
+  - DOMAIN,auth.riotgames.com
+  - DOMAIN,entitlements.auth.riotgames.com
+  - DOMAIN,clientconfig.rpg.riotgames.com
+  - DOMAIN-SUFFIX,leagueoflegends.com
+  - DOMAIN-SUFFIX,pvp.net
+  - DOMAIN-SUFFIX,playvalorant.com
+  - DOMAIN-SUFFIX,lolesports.com
+
+  # Ubisoft Connect、Rockstar Games 和 GOG
+  - DOMAIN,account.ubisoft.com
+  - DOMAIN,connect.ubisoft.com
+  - DOMAIN,store.ubisoft.com
+  - DOMAIN,public-ubiservices.ubi.com
+  - DOMAIN,public-im-ubiservices.ubi.com
+  - DOMAIN,store.ubi.com
+  - DOMAIN,ubisoft-uplay-savegames.s3.amazonaws.com
+  - DOMAIN,www.rockstargames.com
+  - DOMAIN,signin.rockstargames.com
+  - DOMAIN,launcher.rockstargames.com
+  - DOMAIN,prod.ros.rockstargames.com
+  - DOMAIN,www.gog.com
+  - DOMAIN,auth.gog.com
+  - DOMAIN,login.gog.com
+  - DOMAIN,api.gog.com
+  - DOMAIN,embed.gog.com
+  - DOMAIN-SUFFIX,ubisoftconnect.com
+  - DOMAIN-SUFFIX,socialclub.rockstargames.com
+  - DOMAIN-SUFFIX,gog-services.com
+
+  # PlayStation、Xbox 和 Nintendo 商店、账号及在线服务
+  - DOMAIN,store.playstation.com
+  - DOMAIN,www.playstation.com
+  - DOMAIN,api.playstation.com
+  - DOMAIN,id.sonyentertainmentnetwork.com
+  - DOMAIN,account.sonyentertainmentnetwork.com
+  - DOMAIN,auth.api.sonyentertainmentnetwork.com
+  - DOMAIN,www.xbox.com
+  - DOMAIN,account.xbox.com
+  - DOMAIN,sisu.xboxlive.com
+  - DOMAIN,title.mgt.xboxlive.com
+  - DOMAIN,sessiondirectory.xboxlive.com
+  - DOMAIN,client-sessiondirectory.xboxlive.com
+  - DOMAIN,presence.xboxlive.com
+  - DOMAIN,multiplayer.xboxlive.com
+  - DOMAIN,accounts.nintendo.com
+  - DOMAIN,ec.nintendo.com
+  - DOMAIN,my.nintendo.com
+  - DOMAIN,www.nintendo.com
+  - DOMAIN,store.nintendo.co.jp
+  - DOMAIN-SUFFIX,auth.xboxlive.com
+
+  # Roblox 与 Minecraft 国际服务
+  - DOMAIN,www.roblox.com
+  - DOMAIN,auth.roblox.com
+  - DOMAIN,apis.roblox.com
+  - DOMAIN,games.roblox.com
+  - DOMAIN,gamejoin.roblox.com
+  - DOMAIN,assetgame.roblox.com
+  - DOMAIN,friends.roblox.com
+  - DOMAIN,presence.roblox.com
+  - DOMAIN,groups.roblox.com
+  - DOMAIN,economy.roblox.com
+  - DOMAIN,www.minecraft.net
+  - DOMAIN,api.minecraftservices.com
+  - DOMAIN,api.mojang.com
+  - DOMAIN,sessionserver.mojang.com
+  - DOMAIN,textures.minecraft.net
+
+  # Steam 游戏和国际服服务
+  - DOMAIN,accounts.krafton.com
+  - DOMAIN,playdeltaforce.com
+  - DOMAIN,www.playdeltaforce.com
+  - DOMAIN,account.hoyoverse.com
+  - DOMAIN,api-account-os.hoyoverse.com
+  - DOMAIN,account.wargaming.net
+  - DOMAIN,api.worldoftanks.com
+  - DOMAIN,api.worldoftanks.eu
+  - DOMAIN,api.worldofwarships.com
+  - DOMAIN,api.worldofwarships.asia
+  - DOMAIN,login.gaijin.net
+  - DOMAIN,store.gaijin.net
+  - DOMAIN,id.embark.games
+  - DOMAIN,id.supercell.com
+  - DOMAIN,www.nexon.com
+  - DOMAIN,passport.nexon.com
+  - DOMAIN-SUFFIX,pubg.com
+  - DOMAIN-SUFFIX,playbattlegrounds.com
+  - DOMAIN-SUFFIX,counter-strike.net
+  - DOMAIN-SUFFIX,dota2.com
+  - DOMAIN-SUFFIX,faceit.com
+  - DOMAIN-SUFFIX,genshinimpact.com
+  - DOMAIN-SUFFIX,honkaistarrail.com
+  - DOMAIN-SUFFIX,zenlesszonezero.com
+  - DOMAIN-SUFFIX,hoyolab.com
+  - DOMAIN-SUFFIX,kurogame-service.com
+  - DOMAIN-SUFFIX,warthunder.com
+  - DOMAIN-SUFFIX,arcraiders.com
+  - DOMAIN-SUFFIX,reachthefinals.com
+  - DOMAIN-SUFFIX,supercellid.com
