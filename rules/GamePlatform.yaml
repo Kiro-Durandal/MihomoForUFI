@@ -1,7 +1,7 @@
 # 游戏平台 · Mihomo rule provider
-# 版本 0.1.0 · 2026-11-21
+# 版本 0.1.1 · 2026-11-21
 # 用法：behavior: classical / format: yaml。由主配置绑定代理策略。
-# Steam 条目覆盖商店、购物车、结账、登录、社区及相关网页资源。
+# Steam 条目覆盖商店、购物车、结账、登录、社区直播及相关网页资源。
 # 主配置须优先匹配 Steam 下载直连和国服直连。接入顺序见仓库 PR。
 # 只按 F50 可见的目标域名匹配。只有 IP 的对局需另外用实机日志验证。
 # 部分登录服务由同一发行商的多款游戏共用。
@@ -40,7 +40,7 @@
 # SOFTWARE.
 
 payload:
-  # Steam 商店、结账、登录和社区
+  # Steam 商店、结账、登录、社区和直播
   - DOMAIN,store.steampowered.com
   - DOMAIN,checkout.steampowered.com
   - DOMAIN,login.steampowered.com
@@ -58,6 +58,7 @@ payload:
   - DOMAIN,steamcommunity-a.akamaihd.net
   - DOMAIN,steamcommunity-a.akamaihd.net.edgesuite.net
   - DOMAIN,steamuserimages-a.akamaihd.net
+  - DOMAIN,steambroadcast.akamaized.net
   - DOMAIN-SUFFIX,steamcommunity.com
   - DOMAIN-SUFFIX,steam-chat.com
 
